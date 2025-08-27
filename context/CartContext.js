@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useAuth } from "./AuthContext";
 
 const CartContext = createContext();
@@ -62,11 +62,7 @@ export const CartProvider = ({ children }) => {
         console.log("🔄 Frontend state synced with backend");
         console.log("Cart Items:", data.cartData);
         console.log("Cart Count:", data.cartCount);
-
-        // 3. VERIFY by fetching cart again from backend
-        console.log("🔍 Verifying cart data by fetching from backend...");
-        await fetchCart();
-
+        
         return true;
       } else {
         console.error("❌ Backend update failed:", data.message);
@@ -122,7 +118,6 @@ export const CartProvider = ({ children }) => {
         console.log("✅ Quantity updated in backend successfully");
         setCartItems(data.cartData || {});
         setCartCount(data.cartCount || 0);
-        await fetchCart(); // Verify update
         return true;
       } else {
         console.error("❌ Backend quantity update failed:", data.message);
@@ -167,7 +162,6 @@ export const CartProvider = ({ children }) => {
         console.log("✅ Item removed from backend successfully");
         setCartItems(data.cartData || {});
         setCartCount(data.cartCount || 0);
-        await fetchCart(); // Verify removal
         return true;
       } else {
         console.error("❌ Backend item removal failed:", data.message);
@@ -224,7 +218,7 @@ export const CartProvider = ({ children }) => {
   };
 
   // Fetch cart from backend when user logs in
-  const fetchCart = async () => {
+  const fetchCart = useCallback(async () => {
     if (!user?._id) return;
 
     try {
@@ -262,7 +256,7 @@ export const CartProvider = ({ children }) => {
     } catch (error) {
       console.error("🚨 Error fetching cart:", error);
     }
-  };
+  }, [user?._id]); // Only recreate if user ID changes
 
   // Load cart when user changes
   useEffect(() => {
