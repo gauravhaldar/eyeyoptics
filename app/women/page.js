@@ -5,6 +5,9 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useEffect } from "react";
+import { useCart } from "../../context/CartContext";
+import { useAuth } from "../../context/AuthContext";
+import { toast } from "../../components/Toast";
 
 export default function WomenEyeglassesPage() {
   const [sort, setSort] = useState("featured");
@@ -12,6 +15,10 @@ export default function WomenEyeglassesPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Cart and Auth context
+  const { addToCart, isInCart } = useCart();
+  const { user } = useAuth();
 
   // Sidebar filter options
   const filters = {
@@ -30,7 +37,9 @@ export default function WomenEyeglassesPage() {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch("http://localhost:8000/api/products?women=true");
+        const res = await fetch(
+          "http://localhost:8000/api/products?women=true"
+        );
         if (!res.ok) {
           throw new Error("Failed to fetch products");
         }
@@ -47,7 +56,10 @@ export default function WomenEyeglassesPage() {
   }, []);
 
   const slugify = (text) =>
-    text.toLowerCase().replace(/ /g, "-").replace(/[^\w-]+/g, "");
+    text
+      .toLowerCase()
+      .replace(/ /g, "-")
+      .replace(/[^\w-]+/g, "");
 
   // Handle filter changes
   const handleFilterChange = (category, option, checked) => {
@@ -60,9 +72,36 @@ export default function WomenEyeglassesPage() {
     });
   };
 
+  // Handle add to cart
+  const handleAddToCart = async (e, product) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!user) {
+      toast.error("Please sign in to add items to cart");
+      return;
+    }
+
+    try {
+      await addToCart({
+        productId: product._id,
+        name: product.name,
+        price: product.price,
+        image: product.images?.[0]?.url || "/placeholder-image.jpg",
+        quantity: 1,
+      });
+      toast.success(`${product.name} added to cart!`);
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+      toast.error("Failed to add item to cart");
+    }
+  };
+
   // Apply filters + sorting
   const filteredProducts = useMemo(() => {
-    let filtered = Array.isArray(products) ? products.filter(product => product.women) : [];
+    let filtered = Array.isArray(products)
+      ? products.filter((product) => product.women)
+      : [];
 
     for (const [category, options] of Object.entries(selectedFilters)) {
       if (options.length === 0) continue;
@@ -99,10 +138,11 @@ export default function WomenEyeglassesPage() {
 
     if (sort === "low-to-high") filtered.sort((a, b) => a.price - b.price);
     if (sort === "high-to-low") filtered.sort((a, b) => b.price - a.price);
-    if (sort === "new") filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    if (sort === "new")
+      filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     return filtered;
-  }, [products,selectedFilters, sort]);
+  }, [products, selectedFilters, sort]);
 
   // Motion Variants
   const containerVariants = {
@@ -182,23 +222,34 @@ export default function WomenEyeglassesPage() {
             animate="show"
             variants={containerVariants}
           >
-            {loading && <p className="text-center col-span-full text-gray-700">Loading women's eyeglasses...</p>}
-            {error && <p className="text-center col-span-full text-red-500">{error}</p>}
-            {!loading && !error && filteredProducts.length === 0 && (
-              <p className="text-center col-span-full text-gray-700">No women's eyeglasses found.</p>
+            {loading && (
+              <p className="text-center col-span-full text-gray-700">
+                Loading women's eyeglasses...
+              </p>
             )}
-            {!loading && !error && Array.isArray(filteredProducts) && filteredProducts.length > 0 &&
+            {error && (
+              <p className="text-center col-span-full text-red-500">{error}</p>
+            )}
+            {!loading && !error && filteredProducts.length === 0 && (
+              <p className="text-center col-span-full text-gray-700">
+                No women's eyeglasses found.
+              </p>
+            )}
+            {!loading &&
+              !error &&
+              Array.isArray(filteredProducts) &&
+              filteredProducts.length > 0 &&
               filteredProducts.map((product) => {
-              const discount = Math.round(
-                ((product.originalPrice - product.price) / product.originalPrice) *
-                  100
-              );
+                const discount = Math.round(
+                  ((product.originalPrice - product.price) /
+                    product.originalPrice) *
+                    100
+                );
 
-              return (
-                <motion.div key={product._id || product.id} variants={productVariants}>
-                  <Link
-                    href={`/${slugify(product.category || "products")}/${slugify(product.name)}`}
-                    className="block"
+                return (
+                  <motion.div
+                    key={product._id || product.id}
+                    variants={productVariants}
                   >
                     <div className="relative bg-white border border-gray-200 rounded-xl overflow-hidden shadow-md hover:shadow-2xl hover:scale-[1.02] transform transition-all duration-300">
                       {product.hotSeller && (
@@ -207,37 +258,49 @@ export default function WomenEyeglassesPage() {
                         </span>
                       )}
 
-                      <div className="relative w-full h-64 bg-pink-50 z-0">
-                        <Image
-                          src={product.images && product.images.length > 0 ? product.images[0].url : "/placeholder.jpg"}
-                          alt={product.name}
-                          fill
-                          className="object-contain p-6 transition-transform duration-300 hover:scale-105"
-                        />
-                      </div>
-
-                      <div className="p-5 space-y-1">
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {product.name}
-                        </h3>
-                        <p className="text-sm text-gray-500">{product.size}</p>
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg font-bold text-gray-900">
-                            ₹{product.price}
-                          </span>
-                          <span className="text-sm text-gray-400 line-through">
-                            ₹{product.originalPrice}
-                          </span>
-                          <span className="text-sm text-green-600 font-medium">
-                            ({discount}% OFF)
-                          </span>
+                      <Link
+                        href={`/${slugify(
+                          product.category || "products"
+                        )}/${slugify(product.name)}`}
+                        className="block"
+                      >
+                        <div className="relative w-full h-64 bg-pink-50 z-0">
+                          <Image
+                            src={
+                              product.images && product.images.length > 0
+                                ? product.images[0].url
+                                : "/placeholder.jpg"
+                            }
+                            alt={product.name}
+                            fill
+                            className="object-contain p-6 transition-transform duration-300 hover:scale-105"
+                          />
                         </div>
-                      </div>
+
+                        <div className="p-5 space-y-1">
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {product.name}
+                          </h3>
+                          <p className="text-sm text-gray-500">
+                            {product.size}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg font-bold text-gray-900">
+                              ₹{product.price}
+                            </span>
+                            <span className="text-sm text-gray-400 line-through">
+                              ₹{product.originalPrice}
+                            </span>
+                            <span className="text-sm text-green-600 font-medium">
+                              ({discount}% OFF)
+                            </span>
+                          </div>
+                        </div>
+                      </Link>
                     </div>
-                  </Link>
-                </motion.div>
-              );
-            })}
+                  </motion.div>
+                );
+              })}
           </motion.div>
         </main>
       </div>

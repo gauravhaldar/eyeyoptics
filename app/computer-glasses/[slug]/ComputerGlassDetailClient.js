@@ -5,7 +5,10 @@ import Image from "next/image";
 import { useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart } from "lucide-react";
-import React from 'react';
+import React from "react";
+import { useCart } from "../../../context/CartContext";
+import { useAuth } from "../../../context/AuthContext";
+import { toast } from "../../../components/Toast";
 
 export default function ComputerGlassDetail({ product, slug }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -14,6 +17,13 @@ export default function ComputerGlassDetail({ product, slug }) {
   const [selectedImage, setSelectedImage] = useState(1);
   const [quantity, setQuantity] = useState(1);
   const [openSection, setOpenSection] = useState("");
+
+  // Cart and Auth context
+  const { addToCart, loading: cartLoading, isInCart } = useCart();
+  const { user } = useAuth();
+
+  // Check if product is already in cart
+  const productInCart = isInCart(product._id);
 
   const lensOptions = [
     "Zero Power / Computer Glasses",
@@ -62,64 +72,79 @@ export default function ComputerGlassDetail({ product, slug }) {
     },
   ];
 
-  const imageFiles = product.images.map(image => image.url);
+  const handleAddToCart = async () => {
+    if (!user) {
+      toast.error("Please login to add items to cart");
+      return;
+    }
+
+    const success = await addToCart(product._id, quantity);
+    if (success) {
+      toast.success("Product added to cart successfully!");
+    } else {
+      toast.error("Failed to add product to cart");
+    }
+  };
+
+  const imageFiles = product.images.map((image) => image.url);
 
   return (
     <div className="w-full px-4 md:px-8 lg:px-12 py-6 font-sans min-h-screen bg-gray-50">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-       {/* LEFT - Product Images */}
-<div>
-  <motion.div
-    className="bg-white shadow-2xl rounded-2xl p-4"
-    initial={{ opacity: 0, x: -30 }}
-    animate={{ opacity: 1, x: 0 }}
-  >
-    {/* Main Image */}
-    <motion.div
-      className="relative w-full h-64 sm:h-80 md:h-[28rem] overflow-hidden rounded-xl shadow-lg"
-      key={selectedImage}
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ duration: 0.5, type: "spring", stiffness: 150 }}
-    >
-      <Image
-        src={imageFiles[selectedImage - 1]}
-        alt={product.name}
-        fill
-        className="object-contain md:object-cover rounded-xl"
-      />
-      <motion.button
-        className="absolute top-3 right-3 bg-white p-2 rounded-full shadow-md hover:shadow-lg"
-        whileHover={{ scale: 1.2, rotate: 10 }}
-      >
-        <Heart className="w-6 h-6 text-gray-600 hover:text-cyan-500 transition-colors" />
-      </motion.button>
-    </motion.div>
+        {/* LEFT - Product Images */}
+        <div>
+          <motion.div
+            className="bg-white shadow-2xl rounded-2xl p-4"
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+          >
+            {/* Main Image */}
+            <motion.div
+              className="relative w-full h-64 sm:h-80 md:h-[28rem] overflow-hidden rounded-xl shadow-lg"
+              key={selectedImage}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.5, type: "spring", stiffness: 150 }}
+            >
+              <Image
+                src={imageFiles[selectedImage - 1]}
+                alt={product.name}
+                fill
+                className="object-contain md:object-cover rounded-xl"
+              />
+              <motion.button
+                className="absolute top-3 right-3 bg-white p-2 rounded-full shadow-md hover:shadow-lg"
+                whileHover={{ scale: 1.2, rotate: 10 }}
+              >
+                <Heart className="w-6 h-6 text-gray-600 hover:text-cyan-500 transition-colors" />
+              </motion.button>
+            </motion.div>
 
-    {/* Thumbnails */}
-    <div className="grid grid-cols-4 gap-3 mt-4">
-      {imageFiles.map((img, idx) => (
-        <motion.div
-          key={idx}
-          className={`relative w-full h-20 sm:h-24 md:h-28 cursor-pointer overflow-hidden rounded-xl shadow-md
-            ${selectedImage === idx + 1
-              ? "ring-4 ring-cyan-500 shadow-xl scale-105"
-              : "hover:scale-105 hover:shadow-lg"}`}
-          onClick={() => setSelectedImage(idx + 1)}
-        >
-          <Image
-            src={img}
-            alt={`${product.name} - View ${idx + 1}`}
-            fill
-            className="object-cover rounded-xl"
-          />
-        </motion.div>
-      ))}
-    </div>
-  </motion.div>
-</div>
-
+            {/* Thumbnails */}
+            <div className="grid grid-cols-4 gap-3 mt-4">
+              {imageFiles.map((img, idx) => (
+                <motion.div
+                  key={idx}
+                  className={`relative w-full h-20 sm:h-24 md:h-28 cursor-pointer overflow-hidden rounded-xl shadow-md
+            ${
+              selectedImage === idx + 1
+                ? "ring-4 ring-cyan-500 shadow-xl scale-105"
+                : "hover:scale-105 hover:shadow-lg"
+            }`}
+                  onClick={() => setSelectedImage(idx + 1)}
+                >
+                  <Image
+                    src={img}
+                    alt={`${product.name} - View ${idx + 1}`}
+                    fill
+                    className="object-cover rounded-xl"
+                  />
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        </div>
 
         {/* RIGHT - Details */}
         <motion.div
@@ -127,9 +152,7 @@ export default function ComputerGlassDetail({ product, slug }) {
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
         >
-          <h1 className="text-4xl font-bold capitalize">
-            {product.name}
-          </h1>
+          <h1 className="text-4xl font-bold capitalize">{product.name}</h1>
           <p className="text-3xl font-semibold bg-gradient-to-r from-cyan-500 to-blue-600 bg-clip-text text-transparent">
             ₹{product.price}
           </p>
@@ -146,14 +169,31 @@ export default function ComputerGlassDetail({ product, slug }) {
             />
           </div>
           <div className="flex gap-4">
-            <button className="bg-gray-800 text-white px-6 py-3 rounded-lg hover:bg-gray-900">
-              Buy Frame Only
+            <button
+              className={`px-6 py-3 rounded-lg font-medium transition-all duration-300 ${
+                productInCart
+                  ? "bg-green-500 text-white"
+                  : "bg-gray-800 text-white hover:bg-gray-900"
+              }`}
+              onClick={handleAddToCart}
+              disabled={cartLoading || productInCart}
+            >
+              {cartLoading ? (
+                <span className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Adding...
+                </span>
+              ) : productInCart ? (
+                "✓ In Cart"
+              ) : (
+                "Buy Frame Only"
+              )}
             </button>
             <button
-              className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-6 py-3 rounded-lg hover:from-cyan-600 hover:to-blue-700"
+              className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-6 py-3 rounded-lg hover:from-cyan-600 hover:to-blue-700 transition-all duration-300"
               onClick={() => setIsModalOpen(true)}
             >
-              Buy With Lens
+              Buy With Power Lens
             </button>
           </div>
 
@@ -172,8 +212,16 @@ export default function ComputerGlassDetail({ product, slug }) {
 
           {/* Collapsible Sections */}
           {[
-            { title: "Description", content: product.description || "No description available." },
-            { title: "Product Information", content: product.productInformation || "No product information available." },
+            {
+              title: "Description",
+              content: product.description || "No description available.",
+            },
+            {
+              title: "Product Information",
+              content:
+                product.productInformation ||
+                "No product information available.",
+            },
           ].map((section) => (
             <div
               key={section.title}
@@ -287,7 +335,9 @@ export default function ComputerGlassDetail({ product, slug }) {
                   <tbody>
                     {lensPackages.map((row, i) => (
                       <tr key={i}>
-                        <td className="border p-2 font-medium">{row.feature}</td>
+                        <td className="border p-2 font-medium">
+                          {row.feature}
+                        </td>
                         {row.values.map((val, j) => (
                           <td key={j} className="border p-2">
                             {row.feature === "Add to Cart" ? (

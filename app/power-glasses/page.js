@@ -4,6 +4,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { useCart } from "../../context/CartContext";
+import { useAuth } from "../../context/AuthContext";
+import { toast } from "../../components/Toast";
 
 export default function PowerGlassesPage() {
   const [sort, setSort] = useState("featured");
@@ -11,6 +14,10 @@ export default function PowerGlassesPage() {
   const [products, setProducts] = useState([]); // State to store fetched products
   const [loading, setLoading] = useState(true); // Loading state
   const [error, setError] = useState(null); // Error state
+
+  // Cart and Auth context
+  const { addToCart, isInCart } = useCart();
+  const { user } = useAuth();
 
   // Sidebar filter options (specific for power glasses)
   const filters = {
@@ -28,9 +35,12 @@ export default function PowerGlassesPage() {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch("http://localhost:8000/api/products?category=Power Glasses", {
-          method: "GET",
-        });
+        const res = await fetch(
+          "http://localhost:8000/api/products?category=Power Glasses",
+          {
+            method: "GET",
+          }
+        );
         if (!res.ok) {
           throw new Error("Failed to fetch power glasses");
         }
@@ -48,7 +58,10 @@ export default function PowerGlassesPage() {
   }, []); // Empty dependency array means this runs once on mount
 
   const slugify = (text) =>
-    text.toLowerCase().replace(/ /g, "-").replace(/[^\w-]+/g, "");
+    text
+      .toLowerCase()
+      .replace(/ /g, "-")
+      .replace(/[^\w-]+/g, "");
 
   // Filter handler
   const handleFilterChange = (category, option, checked) => {
@@ -62,6 +75,31 @@ export default function PowerGlassesPage() {
       }
       return { ...prev, [category]: newOptions };
     });
+  };
+
+  // Handle add to cart
+  const handleAddToCart = async (e, product) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!user) {
+      toast.error("Please sign in to add items to cart");
+      return;
+    }
+
+    try {
+      await addToCart({
+        productId: product._id,
+        name: product.name,
+        price: product.price,
+        image: product.images?.[0]?.url || "/placeholder-image.jpg",
+        quantity: 1,
+      });
+      toast.success(`${product.name} added to cart!`);
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+      toast.error("Failed to add item to cart");
+    }
   };
 
   // Filtered & Sorted Products
@@ -104,7 +142,7 @@ export default function PowerGlassesPage() {
     if (sort === "new") filtered.sort((a, b) => b.id - a.id);
 
     return filtered;
-  }, [products,selectedFilters, sort]);
+  }, [products, selectedFilters, sort]);
 
   // Motion Variants
   const containerVariants = {
@@ -179,11 +217,17 @@ export default function PowerGlassesPage() {
 
           {/* Products Grid */}
           {loading ? (
-            <div className="col-span-full text-center py-10 text-lg text-gray-600">Loading power glasses...</div>
+            <div className="col-span-full text-center py-10 text-lg text-gray-600">
+              Loading power glasses...
+            </div>
           ) : error ? (
-            <div className="col-span-full text-center py-10 text-lg text-red-500">{error}</div>
+            <div className="col-span-full text-center py-10 text-lg text-red-500">
+              {error}
+            </div>
           ) : filteredProducts.length === 0 ? (
-            <div className="col-span-full text-center py-10 text-lg text-gray-600">No power glasses found.</div>
+            <div className="col-span-full text-center py-10 text-lg text-gray-600">
+              No power glasses found.
+            </div>
           ) : (
             <motion.div
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
@@ -199,21 +243,28 @@ export default function PowerGlassesPage() {
                 );
 
                 return (
-                  <motion.div key={product._id || product.id || index} variants={productVariants}>
-                    <Link
-                      href={`/power-glasses/${slugify(product.name)}`}
-                      className="block"
-                    >
-                      <div className="relative bg-white border border-gray-200 rounded-xl overflow-hidden shadow-md hover:shadow-2xl hover:scale-[1.02] transform transition-all duration-300">
-                        {product.bestSeller && (
-                          <span className="absolute top-3 left-3 z-10 bg-gradient-to-r from-[#00c6ff] to-[#0072ff] text-white text-xs font-semibold px-3 py-1 rounded-full shadow-md">
-                            Best Seller
-                          </span>
-                        )}
+                  <motion.div
+                    key={product._id || product.id || index}
+                    variants={productVariants}
+                  >
+                    <div className="relative bg-white border border-gray-200 rounded-xl overflow-hidden shadow-md hover:shadow-2xl hover:scale-[1.02] transform transition-all duration-300">
+                      {product.bestSeller && (
+                        <span className="absolute top-3 left-3 z-10 bg-gradient-to-r from-[#00c6ff] to-[#0072ff] text-white text-xs font-semibold px-3 py-1 rounded-full shadow-md">
+                          Best Seller
+                        </span>
+                      )}
 
+                      <Link
+                        href={`/power-glasses/${slugify(product.name)}`}
+                        className="block"
+                      >
                         <div className="relative w-full h-64 bg-gray-50 z-0">
                           <Image
-                            src={product.images && product.images.length > 0 ? product.images[0].url : "/placeholder.jpg"}
+                            src={
+                              product.images && product.images.length > 0
+                                ? product.images[0].url
+                                : "/placeholder.jpg"
+                            }
                             alt={product.name}
                             fill
                             className="object-contain p-6 transition-transform duration-300 hover:scale-105"
@@ -243,8 +294,8 @@ export default function PowerGlassesPage() {
                             )}
                           </div>
                         </div>
-                      </div>
-                    </Link>
+                      </Link>
+                    </div>
                   </motion.div>
                 );
               })}
@@ -284,16 +335,15 @@ function FilterDropdown({ title, options, selectedOptions, onChange }) {
             className="mt-2 space-y-1 overflow-hidden"
           >
             {options.map((option, index) => (
-              <li key={`${title}-${option}`}
+              <li
+                key={`${title}-${option}`}
                 className="flex items-center gap-2 hover:text-gray-900 transition-colors"
               >
                 <input
                   type="checkbox"
                   id={`${title}-${index}`}
                   checked={selectedOptions.includes(option)}
-                  onChange={(e) =>
-                    onChange(title, option, e.target.checked)
-                  }
+                  onChange={(e) => onChange(title, option, e.target.checked)}
                   className="accent-gray-700"
                 />
                 <label

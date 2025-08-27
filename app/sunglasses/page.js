@@ -4,6 +4,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { useCart } from "../../context/CartContext";
+import { useAuth } from "../../context/AuthContext";
+import { toast } from "../../components/Toast";
 
 export default function SunglassesPage() {
   const [sort, setSort] = useState("featured");
@@ -11,6 +14,10 @@ export default function SunglassesPage() {
   const [products, setProducts] = useState([]); // State to store fetched products
   const [loading, setLoading] = useState(true); // Loading state
   const [error, setError] = useState(null); // Error state
+
+  // Cart and Auth context
+  const { addToCart, isInCart } = useCart();
+  const { user } = useAuth();
 
   // Sidebar filter options
   const filters = {
@@ -86,7 +93,10 @@ export default function SunglassesPage() {
   // ], []); // runs once, stays stable
 
   const slugify = (text) =>
-    text.toLowerCase().replace(/ /g, "-").replace(/[^\w-]+/g, "");
+    text
+      .toLowerCase()
+      .replace(/ /g, "-")
+      .replace(/[^\w-]+/g, "");
 
   // Filter handler
   const handleFilterChange = (category, option, checked) => {
@@ -100,6 +110,31 @@ export default function SunglassesPage() {
       }
       return { ...prev, [category]: newOptions };
     });
+  };
+
+  // Handle add to cart
+  const handleAddToCart = async (e, product) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!user) {
+      toast.error("Please sign in to add items to cart");
+      return;
+    }
+
+    try {
+      await addToCart({
+        productId: product._id,
+        name: product.name,
+        price: product.price,
+        image: product.images?.[0]?.url || "/placeholder-image.jpg",
+        quantity: 1,
+      });
+      toast.success(`${product.name} added to cart!`);
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+      toast.error("Failed to add item to cart");
+    }
   };
 
   // Filtered & Sorted Products
@@ -144,14 +179,16 @@ export default function SunglassesPage() {
     if (sort === "new") filtered.sort((a, b) => b.id - a.id);
 
     return filtered;
-  }, [products,selectedFilters, sort]);
+  }, [products, selectedFilters, sort]);
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch("http://localhost:8000/api/products?category=Sunglasses");
+        const res = await fetch(
+          "http://localhost:8000/api/products?category=Sunglasses"
+        );
         if (!res.ok) {
           throw new Error("Failed to fetch sunglasses");
         }
@@ -240,11 +277,17 @@ export default function SunglassesPage() {
 
           {/* Products Grid */}
           {loading ? (
-            <div className="text-center py-10 text-lg text-gray-700">Loading sunglasses...</div>
+            <div className="text-center py-10 text-lg text-gray-700">
+              Loading sunglasses...
+            </div>
           ) : error ? (
-            <div className="text-center py-10 text-lg text-red-600">{error}</div>
+            <div className="text-center py-10 text-lg text-red-600">
+              {error}
+            </div>
           ) : filteredProducts.length === 0 ? (
-            <div className="text-center py-10 text-lg text-gray-700">No sunglasses found.</div>
+            <div className="text-center py-10 text-lg text-gray-700">
+              No sunglasses found.
+            </div>
           ) : (
             <motion.div
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
@@ -261,17 +304,17 @@ export default function SunglassesPage() {
 
                 return (
                   <motion.div key={product._id} variants={productVariants}>
-                    <Link
-                      href={`/sunglasses/${product._id}`}
-                      className="block"
-                    >
-                      <div className="relative bg-white border border-gray-200 rounded-xl overflow-hidden shadow-md hover:shadow-2xl hover:scale-[1.02] transform transition-all duration-300">
-                        {product.bestSeller && (
-                          <span className="absolute top-3 left-3 z-10 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs font-semibold px-3 py-1 rounded-full shadow-md">
-                            Best Seller
-                          </span>
-                        )}
+                    <div className="relative bg-white border border-gray-200 rounded-xl overflow-hidden shadow-md hover:shadow-2xl hover:scale-[1.02] transform transition-all duration-300">
+                      {product.bestSeller && (
+                        <span className="absolute top-3 left-3 z-10 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs font-semibold px-3 py-1 rounded-full shadow-md">
+                          Best Seller
+                        </span>
+                      )}
 
+                      <Link
+                        href={`/sunglasses/${product._id}`}
+                        className="block"
+                      >
                         <div className="relative w-full h-64 bg-gray-50 z-0">
                           {product.images && product.images.length > 0 && (
                             <Image
@@ -287,7 +330,9 @@ export default function SunglassesPage() {
                           <h3 className="text-lg font-semibold text-gray-900">
                             {product.name}
                           </h3>
-                          <p className="text-sm text-gray-500">{product.size}</p>
+                          <p className="text-sm text-gray-500">
+                            {product.size}
+                          </p>
                           <div className="flex items-center gap-2">
                             <span className="text-lg font-bold text-gray-900">
                               ₹{product.price}
@@ -304,8 +349,8 @@ export default function SunglassesPage() {
                             )}
                           </div>
                         </div>
-                      </div>
-                    </Link>
+                      </Link>
+                    </div>
                   </motion.div>
                 );
               })}

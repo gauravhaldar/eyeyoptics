@@ -4,6 +4,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { useCart } from "../../context/CartContext";
+import { useAuth } from "../../context/AuthContext";
+import { toast } from "../../components/Toast";
 
 export default function ProductsPage() {
   const [sort, setSort] = useState("featured");
@@ -11,6 +14,10 @@ export default function ProductsPage() {
   const [products, setProducts] = useState([]); // State to store fetched products
   const [loading, setLoading] = useState(true); // Loading state
   const [error, setError] = useState(null); // Error state
+
+  // Cart and Auth context
+  const { addToCart, isInCart } = useCart();
+  const { user } = useAuth();
 
   // Sidebar filter options
   const filters = {
@@ -25,52 +32,62 @@ export default function ProductsPage() {
   };
 
   // Filtered & Sorted Products
-const filteredProducts = useMemo(() => {
-  let filtered = [...products]; // Use dynamically fetched products
+  const filteredProducts = useMemo(() => {
+    let filtered = [...products]; // Use dynamically fetched products
 
-  // Apply filters
-  for (const [category, options] of Object.entries(selectedFilters)) {
-    if (options.length === 0) continue;
-    filtered = filtered.filter((product) => {
-      switch (category) {
-        case "Frame Style": return options.includes(product.style);
-        case "Frame Shape": return options.includes(product.shape);
-        case "Frame Color": return options.includes(product.color);
-        case "Frame Material": return options.includes(product.material);
-        case "Brands": return options.includes(product.brand);
-        case "Collections": return options.includes(product.collection);
-        case "Frame Size": return options.includes(product.size);
-        case "Price":
-          return options.some((priceRange) => {
-            if (priceRange === "Under ₹999") return product.price < 999;
-            if (priceRange === "₹1000 - ₹1999")
-              return product.price >= 1000 && product.price <= 1999;
-            if (priceRange === "₹2000 - ₹2999")
-              return product.price >= 2000 && product.price <= 2999;
-            if (priceRange === "Above ₹3000") return product.price > 3000;
-          });
-        default:
-          return true;
-      }
-    });
-  }
+    // Apply filters
+    for (const [category, options] of Object.entries(selectedFilters)) {
+      if (options.length === 0) continue;
+      filtered = filtered.filter((product) => {
+        switch (category) {
+          case "Frame Style":
+            return options.includes(product.style);
+          case "Frame Shape":
+            return options.includes(product.shape);
+          case "Frame Color":
+            return options.includes(product.color);
+          case "Frame Material":
+            return options.includes(product.material);
+          case "Brands":
+            return options.includes(product.brand);
+          case "Collections":
+            return options.includes(product.collection);
+          case "Frame Size":
+            return options.includes(product.size);
+          case "Price":
+            return options.some((priceRange) => {
+              if (priceRange === "Under ₹999") return product.price < 999;
+              if (priceRange === "₹1000 - ₹1999")
+                return product.price >= 1000 && product.price <= 1999;
+              if (priceRange === "₹2000 - ₹2999")
+                return product.price >= 2000 && product.price <= 2999;
+              if (priceRange === "Above ₹3000") return product.price > 3000;
+            });
+          default:
+            return true;
+        }
+      });
+    }
 
-  // Apply sorting
-  if (sort === "low-to-high") filtered.sort((a, b) => a.price - b.price);
-  if (sort === "high-to-low") filtered.sort((a, b) => b.price - a.price);
-  if (sort === "new") filtered.sort((a, b) => b.id - a.id);
+    // Apply sorting
+    if (sort === "low-to-high") filtered.sort((a, b) => a.price - b.price);
+    if (sort === "high-to-low") filtered.sort((a, b) => b.price - a.price);
+    if (sort === "new") filtered.sort((a, b) => b.id - a.id);
 
-  return filtered;
-}, [products, selectedFilters, sort]);
+    return filtered;
+  }, [products, selectedFilters, sort]);
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch("http://localhost:8000/api/products?category=Eyeglasses", {
-          method: "GET",
-        });
+        const res = await fetch(
+          "http://localhost:8000/api/products?category=Eyeglasses",
+          {
+            method: "GET",
+          }
+        );
         if (!res.ok) {
           throw new Error("Failed to fetch eyeglasses");
         }
@@ -88,7 +105,10 @@ const filteredProducts = useMemo(() => {
   }, []); // Empty dependency array means this runs once on mount
 
   const slugify = (text) =>
-    text.toLowerCase().replace(/ /g, "-").replace(/[^\w-]+/g, "");
+    text
+      .toLowerCase()
+      .replace(/ /g, "-")
+      .replace(/[^\w-]+/g, "");
 
   // Filter handler
   const handleFilterChange = (category, option, checked) => {
@@ -102,6 +122,23 @@ const filteredProducts = useMemo(() => {
       }
       return { ...prev, [category]: newOptions };
     });
+  };
+
+  const handleAddToCart = async (e, productId) => {
+    e.preventDefault(); // Prevent navigation to product page
+    e.stopPropagation();
+
+    if (!user) {
+      toast.error("Please login to add items to cart");
+      return;
+    }
+
+    const success = await addToCart(productId, 1);
+    if (success) {
+      toast.success("Product added to cart successfully!");
+    } else {
+      toast.error("Failed to add product to cart");
+    }
   };
 
   // Motion Variants
@@ -177,11 +214,17 @@ const filteredProducts = useMemo(() => {
 
           {/* Products Grid */}
           {loading ? (
-            <div className="text-center py-10 text-lg text-gray-700">Loading eyeglasses...</div>
+            <div className="text-center py-10 text-lg text-gray-700">
+              Loading eyeglasses...
+            </div>
           ) : error ? (
-            <div className="text-center py-10 text-lg text-red-600">{error}</div>
+            <div className="text-center py-10 text-lg text-red-600">
+              {error}
+            </div>
           ) : filteredProducts.length === 0 ? (
-            <div className="text-center py-10 text-lg text-gray-700">No eyeglasses found.</div>
+            <div className="text-center py-10 text-lg text-gray-700">
+              No eyeglasses found.
+            </div>
           ) : (
             <motion.div
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
@@ -198,17 +241,17 @@ const filteredProducts = useMemo(() => {
 
                 return (
                   <motion.div key={product._id} variants={productVariants}>
-                    <Link
-                      href={`/eyeglasses/${product._id}`}
-                      className="block"
-                    >
-                      <div className="relative bg-white border border-gray-200 rounded-xl overflow-hidden shadow-md hover:shadow-2xl hover:scale-[1.02] transform transition-all duration-300">
-                        {product.bestSeller && (
-                          <span className="absolute top-3 left-3 z-10 bg-gradient-to-r from-[#00c6ff] to-[#0072ff] text-white text-xs font-semibold px-3 py-1 rounded-full shadow-md">
-                            Best Seller
-                          </span>
-                        )}
+                    <div className="relative bg-white border border-gray-200 rounded-xl overflow-hidden shadow-md hover:shadow-2xl hover:scale-[1.02] transform transition-all duration-300">
+                      {product.bestSeller && (
+                        <span className="absolute top-3 left-3 z-10 bg-gradient-to-r from-[#00c6ff] to-[#0072ff] text-white text-xs font-semibold px-3 py-1 rounded-full shadow-md">
+                          Best Seller
+                        </span>
+                      )}
 
+                      <Link
+                        href={`/eyeglasses/${product._id}`}
+                        className="block"
+                      >
                         <div className="relative w-full h-64 bg-gray-50 z-0">
                           {product.images && product.images.length > 0 && (
                             <Image
@@ -220,11 +263,13 @@ const filteredProducts = useMemo(() => {
                           )}
                         </div>
 
-                        <div className="p-5 space-y-1">
+                        <div className="p-5 space-y-3">
                           <h3 className="text-lg font-semibold text-gray-900">
                             {product.name}
                           </h3>
-                          <p className="text-sm text-gray-500">{product.size}</p>
+                          <p className="text-sm text-gray-500">
+                            {product.size}
+                          </p>
                           <div className="flex items-center gap-2">
                             <span className="text-lg font-bold text-gray-900">
                               ₹{product.price}
@@ -241,8 +286,8 @@ const filteredProducts = useMemo(() => {
                             )}
                           </div>
                         </div>
-                      </div>
-                    </Link>
+                      </Link>
+                    </div>
                   </motion.div>
                 );
               })}
@@ -290,9 +335,7 @@ function FilterDropdown({ title, options, selectedOptions, onChange }) {
                   type="checkbox"
                   id={`${title}-${index}`}
                   checked={selectedOptions.includes(option)}
-                  onChange={(e) =>
-                    onChange(title, option, e.target.checked)
-                  }
+                  onChange={(e) => onChange(title, option, e.target.checked)}
                   className="accent-gray-700"
                 />
                 <label

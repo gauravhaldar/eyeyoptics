@@ -4,6 +4,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { useCart } from "../../context/CartContext";
+import { useAuth } from "../../context/AuthContext";
+import { toast } from "../../components/Toast";
 
 export default function ContactLensesPage() {
   const [sort, setSort] = useState("featured");
@@ -11,6 +14,10 @@ export default function ContactLensesPage() {
   const [products, setProducts] = useState([]); // State to store fetched products
   const [loading, setLoading] = useState(true); // Loading state
   const [error, setError] = useState(null); // Error state
+
+  // Cart and Auth context
+  const { addToCart, isInCart } = useCart();
+  const { user } = useAuth();
 
   // Sidebar filter options for contact lenses
   const filters = {
@@ -28,9 +35,12 @@ export default function ContactLensesPage() {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch("http://localhost:8000/api/products?category=Contact Lenses", {
-          method: "GET",
-        });
+        const res = await fetch(
+          "http://localhost:8000/api/products?category=Contact Lenses",
+          {
+            method: "GET",
+          }
+        );
         if (!res.ok) {
           throw new Error("Failed to fetch contact lenses");
         }
@@ -48,7 +58,10 @@ export default function ContactLensesPage() {
   }, []); // Empty dependency array means this runs once on mount
 
   const slugify = (text) =>
-    text.toLowerCase().replace(/ /g, "-").replace(/[^\w-]+/g, "");
+    text
+      .toLowerCase()
+      .replace(/ /g, "-")
+      .replace(/[^\w-]+/g, "");
 
   // Filter handler
   const handleFilterChange = (category, option, checked) => {
@@ -64,49 +77,74 @@ export default function ContactLensesPage() {
     });
   };
 
- // Filtered & Sorted Products
-const filteredProducts = useMemo(() => {
-  let filtered = [...products];
+  // Handle add to cart
+  const handleAddToCart = async (e, product) => {
+    e.preventDefault();
+    e.stopPropagation();
 
-  // Apply filters
-  for (const [category, options] of Object.entries(selectedFilters)) {
-    if (options.length === 0) continue;
-    filtered = filtered.filter((product) => {
-      switch (category) {
-        case "Lens Type":
-          return options.includes(product.type);
-        case "Lens Material":
-          return options.includes(product.material);
-        case "Lens Color":
-          return options.includes(product.color);
-        case "Brands":
-          return options.includes(product.brand);
-        case "Lens Diameter":
-          return options.includes(product.diameter);
-        case "Lens Power":
-          return options.includes(product.power);
-        case "Price":
-          return options.some((priceRange) => {
-            if (priceRange === "Under ₹500") return product.price < 500;
-            if (priceRange === "₹500 - ₹999")
-              return product.price >= 500 && product.price <= 999;
-            if (priceRange === "₹1000 - ₹1999")
-              return product.price >= 1000 && product.price <= 1999;
-            if (priceRange === "Above ₹2000") return product.price > 2000;
-          });
-        default:
-          return true;
-      }
-    });
-  }
+    if (!user) {
+      toast.error("Please sign in to add items to cart");
+      return;
+    }
 
-  // Apply sorting
-  if (sort === "low-to-high") filtered.sort((a, b) => a.price - b.price);
-  if (sort === "high-to-low") filtered.sort((a, b) => b.price - a.price);
-  if (sort === "new") filtered.sort((a, b) => b.id - a.id);
+    try {
+      await addToCart({
+        productId: product._id,
+        name: product.name,
+        price: product.price,
+        image: product.images?.[0]?.url || "/placeholder-image.jpg",
+        quantity: 1,
+      });
+      toast.success(`${product.name} added to cart!`);
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+      toast.error("Failed to add item to cart");
+    }
+  };
 
-  return filtered;
-}, [products, selectedFilters, sort]); // ✅ include products
+  // Filtered & Sorted Products
+  const filteredProducts = useMemo(() => {
+    let filtered = [...products];
+
+    // Apply filters
+    for (const [category, options] of Object.entries(selectedFilters)) {
+      if (options.length === 0) continue;
+      filtered = filtered.filter((product) => {
+        switch (category) {
+          case "Lens Type":
+            return options.includes(product.type);
+          case "Lens Material":
+            return options.includes(product.material);
+          case "Lens Color":
+            return options.includes(product.color);
+          case "Brands":
+            return options.includes(product.brand);
+          case "Lens Diameter":
+            return options.includes(product.diameter);
+          case "Lens Power":
+            return options.includes(product.power);
+          case "Price":
+            return options.some((priceRange) => {
+              if (priceRange === "Under ₹500") return product.price < 500;
+              if (priceRange === "₹500 - ₹999")
+                return product.price >= 500 && product.price <= 999;
+              if (priceRange === "₹1000 - ₹1999")
+                return product.price >= 1000 && product.price <= 1999;
+              if (priceRange === "Above ₹2000") return product.price > 2000;
+            });
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Apply sorting
+    if (sort === "low-to-high") filtered.sort((a, b) => a.price - b.price);
+    if (sort === "high-to-low") filtered.sort((a, b) => b.price - a.price);
+    if (sort === "new") filtered.sort((a, b) => b.id - a.id);
+
+    return filtered;
+  }, [products, selectedFilters, sort]); // ✅ include products
 
   // Motion Variants
   const containerVariants = {
@@ -181,11 +219,17 @@ const filteredProducts = useMemo(() => {
 
           {/* Products Grid */}
           {loading ? (
-            <div className="col-span-full text-center py-10 text-lg text-gray-600">Loading contact lenses...</div>
+            <div className="col-span-full text-center py-10 text-lg text-gray-600">
+              Loading contact lenses...
+            </div>
           ) : error ? (
-            <div className="col-span-full text-center py-10 text-lg text-red-500">{error}</div>
+            <div className="col-span-full text-center py-10 text-lg text-red-500">
+              {error}
+            </div>
           ) : filteredProducts.length === 0 ? (
-            <div className="col-span-full text-center py-10 text-lg text-gray-600">No contact lenses found.</div>
+            <div className="col-span-full text-center py-10 text-lg text-gray-600">
+              No contact lenses found.
+            </div>
           ) : (
             <motion.div
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
@@ -201,21 +245,28 @@ const filteredProducts = useMemo(() => {
                 );
 
                 return (
-                  <motion.div key={product._id || product.id || index} variants={productVariants}>
-                    <Link
-                      href={`/contact-lenses/${slugify(product.name)}`}
-                      className="block"
-                    >
-                      <div className="relative bg-white border border-gray-200 rounded-xl overflow-hidden shadow-md hover:shadow-2xl hover:scale-[1.02] transform transition-all duration-300">
-                        {product.bestSeller && (
-                          <span className="absolute top-3 left-3 z-10 bg-gradient-to-r from-[#00c6ff] to-[#0072ff] text-white text-xs font-semibold px-3 py-1 rounded-full shadow-md">
-                            Best Seller
-                          </span>
-                        )}
+                  <motion.div
+                    key={product._id || product.id || index}
+                    variants={productVariants}
+                  >
+                    <div className="relative bg-white border border-gray-200 rounded-xl overflow-hidden shadow-md hover:shadow-2xl hover:scale-[1.02] transform transition-all duration-300">
+                      {product.bestSeller && (
+                        <span className="absolute top-3 left-3 z-10 bg-gradient-to-r from-[#00c6ff] to-[#0072ff] text-white text-xs font-semibold px-3 py-1 rounded-full shadow-md">
+                          Best Seller
+                        </span>
+                      )}
 
+                      <Link
+                        href={`/contact-lenses/${slugify(product.name)}`}
+                        className="block"
+                      >
                         <div className="relative w-full h-64 bg-gray-50 z-0">
                           <Image
-                            src={product.images && product.images.length > 0 ? product.images[0].url : "/placeholder.jpg"}
+                            src={
+                              product.images && product.images.length > 0
+                                ? product.images[0].url
+                                : "/placeholder.jpg"
+                            }
                             alt={product.name}
                             fill
                             className="object-contain p-6 transition-transform duration-300 hover:scale-105"
@@ -245,8 +296,8 @@ const filteredProducts = useMemo(() => {
                             )}
                           </div>
                         </div>
-                      </div>
-                    </Link>
+                      </Link>
+                    </div>
                   </motion.div>
                 );
               })}
@@ -294,9 +345,7 @@ function FilterDropdown({ title, options, selectedOptions, onChange }) {
                   type="checkbox"
                   id={`${title}-${index}`}
                   checked={selectedOptions.includes(option)}
-                  onChange={(e) =>
-                    onChange(title, option, e.target.checked)
-                  }
+                  onChange={(e) => onChange(title, option, e.target.checked)}
                   className="accent-gray-700"
                 />
                 <label
