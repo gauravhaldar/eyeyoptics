@@ -15,132 +15,99 @@ export const useCart = () => {
 
 export const CartProvider = ({ children }) => {
   const { user } = useAuth();
+
+  // Minimal state - backend first approach
+  const [loading, setLoading] = useState(false);
   const [cartItems, setCartItems] = useState({});
   const [cartCount, setCartCount] = useState(0);
-  const [totalAmount, setTotalAmount] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
 
-  // Fetch cart data when user logs in
-  useEffect(() => {
-    if (user?._id) {
-      fetchCart();
-    } else {
-      // Clear cart when user logs out
-      setCartItems({});
-      setCartCount(0);
-      setTotalAmount(0);
-    }
-  }, [user]);
-
-  // Calculate totals whenever cart items change
-  useEffect(() => {
-    calculateTotals();
-  }, [cartItems]);
-
-  const calculateTotals = () => {
-    const items = Object.values(cartItems);
-    const count = items.length;
-    const total = items.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0
-    );
-
-    setCartCount(count);
-    setTotalAmount(total);
-  };
-
-  const fetchCart = async () => {
-    if (!user?._id) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await fetch(
-        `http://localhost:8000/api/cart/${user._id}`,
-        {
-          method: "GET",
-          credentials: "include",
-        }
-      );
-
-      const data = await response.json();
-
-      if (data.success) {
-        setCartItems(data.cartData || {});
-      } else {
-        setError(data.message);
-      }
-    } catch (err) {
-      setError("Failed to fetch cart");
-      console.error("Cart fetch error:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const addToCart = async (
-    productId,
-    quantity = 1,
-    size = null,
-    color = null
-  ) => {
+  // Add to cart - Backend first, then sync frontend
+  const addToCart = async (productId, quantity = 1) => {
     if (!user?._id) {
-      setError("Please login to add items to cart");
+      console.error("User not logged in");
       return false;
     }
 
+    console.log("🔄 Adding to cart - Backend First Approach");
+    console.log("Product ID:", productId);
+    console.log("Quantity:", quantity);
+    console.log("User ID:", user._id);
+
     try {
       setLoading(true);
-      setError(null);
 
+      // 1. UPDATE BACKEND FIRST
       const response = await fetch("http://localhost:8000/api/cart/add", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        credentials: "include",
         body: JSON.stringify({
           userId: user._id,
           productId,
           quantity,
-          size,
-          color,
         }),
       });
 
       const data = await response.json();
+      console.log("📤 Backend Response:", data);
 
       if (data.success) {
+        console.log("✅ Backend updated successfully");
+
+        // 2. SYNC FRONTEND STATE with backend response
         setCartItems(data.cartData || {});
+        setCartCount(data.cartCount || 0);
+
+        console.log("🔄 Frontend state synced with backend");
+        console.log("Cart Items:", data.cartData);
+        console.log("Cart Count:", data.cartCount);
+
+        // 3. VERIFY by fetching cart again from backend
+        console.log("🔍 Verifying cart data by fetching from backend...");
+        await fetchCart();
+
         return true;
       } else {
-        setError(data.message);
+        console.error("❌ Backend update failed:", data.message);
         return false;
       }
-    } catch (err) {
-      setError("Failed to add item to cart");
-      console.error("Add to cart error:", err);
+    } catch (error) {
+      console.error("🚨 Error in addToCart:", error);
       return false;
     } finally {
       setLoading(false);
     }
   };
 
+  // Check if product is in cart (for UI state)
+  const isInCart = (productId) => {
+    const inCart = Object.values(cartItems).some(
+      (item) => item.productId === productId
+    );
+    console.log(`🔍 Checking if ${productId} is in cart:`, inCart);
+    return inCart;
+  };
+
+  // Update item quantity - Backend first
   const updateQuantity = async (cartKey, quantity) => {
-    if (!user?._id) return false;
+    if (!user?._id) {
+      console.error("User not logged in");
+      return false;
+    }
+
+    console.log("🔄 Updating quantity - Backend First Approach");
+    console.log("Cart Key:", cartKey);
+    console.log("New Quantity:", quantity);
 
     try {
       setLoading(true);
-      setError(null);
 
       const response = await fetch("http://localhost:8000/api/cart/update", {
-        method: "POST",
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        credentials: "include",
         body: JSON.stringify({
           userId: user._id,
           cartKey,
@@ -149,36 +116,44 @@ export const CartProvider = ({ children }) => {
       });
 
       const data = await response.json();
+      console.log("📤 Update quantity backend response:", data);
 
       if (data.success) {
+        console.log("✅ Quantity updated in backend successfully");
         setCartItems(data.cartData || {});
+        setCartCount(data.cartCount || 0);
+        await fetchCart(); // Verify update
         return true;
       } else {
-        setError(data.message);
+        console.error("❌ Backend quantity update failed:", data.message);
         return false;
       }
-    } catch (err) {
-      setError("Failed to update quantity");
-      console.error("Update quantity error:", err);
+    } catch (error) {
+      console.error("🚨 Error updating quantity:", error);
       return false;
     } finally {
       setLoading(false);
     }
   };
 
+  // Remove item from cart - Backend first
   const removeFromCart = async (cartKey) => {
-    if (!user?._id) return false;
+    if (!user?._id) {
+      console.error("User not logged in");
+      return false;
+    }
+
+    console.log("🗑️ Removing item from cart - Backend First Approach");
+    console.log("Cart Key:", cartKey);
 
     try {
       setLoading(true);
-      setError(null);
 
       const response = await fetch("http://localhost:8000/api/cart/remove", {
-        method: "POST",
+        method: "DELETE",
         headers: {
           "Content-Type": "application/json",
         },
-        credentials: "include",
         body: JSON.stringify({
           userId: user._id,
           cartKey,
@@ -186,88 +161,133 @@ export const CartProvider = ({ children }) => {
       });
 
       const data = await response.json();
+      console.log("📤 Remove item backend response:", data);
 
       if (data.success) {
+        console.log("✅ Item removed from backend successfully");
         setCartItems(data.cartData || {});
+        setCartCount(data.cartCount || 0);
+        await fetchCart(); // Verify removal
         return true;
       } else {
-        setError(data.message);
+        console.error("❌ Backend item removal failed:", data.message);
         return false;
       }
-    } catch (err) {
-      setError("Failed to remove item");
-      console.error("Remove from cart error:", err);
+    } catch (error) {
+      console.error("🚨 Error removing item:", error);
       return false;
     } finally {
       setLoading(false);
     }
   };
 
+  // Clear entire cart - Backend first
   const clearCart = async () => {
-    if (!user?._id) return false;
+    if (!user?._id) {
+      console.error("User not logged in");
+      return false;
+    }
+
+    console.log("🧹 Clearing cart - Backend First Approach");
 
     try {
       setLoading(true);
-      setError(null);
 
       const response = await fetch("http://localhost:8000/api/cart/clear", {
-        method: "POST",
+        method: "DELETE",
         headers: {
           "Content-Type": "application/json",
         },
-        credentials: "include",
         body: JSON.stringify({
           userId: user._id,
         }),
       });
 
       const data = await response.json();
+      console.log("📤 Clear cart backend response:", data);
 
       if (data.success) {
+        console.log("✅ Cart cleared from backend successfully");
         setCartItems({});
+        setCartCount(0);
         return true;
       } else {
-        setError(data.message);
+        console.error("❌ Backend cart clear failed:", data.message);
         return false;
       }
-    } catch (err) {
-      setError("Failed to clear cart");
-      console.error("Clear cart error:", err);
+    } catch (error) {
+      console.error("🚨 Error clearing cart:", error);
       return false;
     } finally {
       setLoading(false);
     }
   };
 
-  const isInCart = (productId, size = null, color = null) => {
-    const cartKey =
-      size || color
-        ? `${productId}_${size || "default"}_${color || "default"}`
-        : productId;
-    return cartKey in cartItems;
+  // Fetch cart from backend when user logs in
+  const fetchCart = async () => {
+    if (!user?._id) return;
+
+    try {
+      console.log("📥 Fetching cart from backend for user:", user._id);
+
+      const response = await fetch(
+        `http://localhost:8000/api/cart/${user._id}`
+      );
+      const data = await response.json();
+
+      console.log("📥 Raw backend cart response:", data);
+
+      if (data.success) {
+        console.log("✅ Cart fetched from backend successfully");
+        console.log("📦 Cart data from backend:", data.cartData);
+        console.log("📊 Cart count from backend:", data.cartCount);
+
+        setCartItems(data.cartData || {});
+        setCartCount(data.cartCount || 0);
+
+        // Log each cart item for verification
+        if (data.cartData) {
+          Object.entries(data.cartData).forEach(([key, item]) => {
+            console.log(`🛒 Cart item [${key}]:`, {
+              name: item.name,
+              productId: item.productId,
+              quantity: item.quantity,
+              price: item.price,
+            });
+          });
+        }
+      } else {
+        console.error("❌ Failed to fetch cart:", data.message);
+      }
+    } catch (error) {
+      console.error("🚨 Error fetching cart:", error);
+    }
   };
 
-  const getCartItemQuantity = (productId, size = null, color = null) => {
-    const cartKey =
-      size || color
-        ? `${productId}_${size || "default"}_${color || "default"}`
-        : productId;
-    return cartItems[cartKey]?.quantity || 0;
-  };
+  // Load cart when user changes
+  useEffect(() => {
+    if (user?._id) {
+      fetchCart();
+    } else {
+      // Clear state when user logs out
+      setCartItems({});
+      setCartCount(0);
+    }
+  }, [user]);
 
   const value = {
+    // State
     cartItems,
     cartCount,
-    totalAmount,
     loading,
-    error,
+
+    // Actions - Backend First Approach
     addToCart,
     updateQuantity,
     removeFromCart,
     clearCart,
-    fetchCart,
     isInCart,
-    getCartItemQuantity,
+    fetchCart,
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
