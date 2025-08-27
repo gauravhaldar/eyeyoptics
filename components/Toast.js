@@ -4,13 +4,14 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 let showToast = null;
+let toastCounter = 0;
 
 export const useToast = () => {
   const [toasts, setToasts] = useState([]);
 
   useEffect(() => {
     showToast = (message, type = "success") => {
-      const id = Date.now();
+      const id = `toast-${Date.now()}-${++toastCounter}`;
       const newToast = { id, message, type };
 
       setToasts((prev) => [...prev, newToast]);

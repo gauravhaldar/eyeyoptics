@@ -1,6 +1,12 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 import { useAuth } from "./AuthContext";
 
 const CartContext = createContext();
@@ -62,7 +68,7 @@ export const CartProvider = ({ children }) => {
         console.log("🔄 Frontend state synced with backend");
         console.log("Cart Items:", data.cartData);
         console.log("Cart Count:", data.cartCount);
-        
+
         return true;
       } else {
         console.error("❌ Backend update failed:", data.message);
