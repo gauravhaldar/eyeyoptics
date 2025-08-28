@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -48,6 +48,11 @@ export default function CartPage() {
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [deliveryAvailable, setDeliveryAvailable] = useState(true);
 
+  // Scroll state for order summary
+  const [shouldScroll, setShouldScroll] = useState(false);
+  const cartItemsRef = useRef(null);
+  const orderSummaryRef = useRef(null);
+
   // Calculate totals
   const cartItemsArray = Object.values(cartItems);
   const subtotal = cartItemsArray.reduce(
@@ -72,6 +77,33 @@ export default function CartPage() {
   }
 
   const total = subtotal - couponDiscount + tax + shipping;
+
+  // Check if order summary should scroll
+  useEffect(() => {
+    const checkScrollNeed = () => {
+      if (cartItemsRef.current && orderSummaryRef.current) {
+        const cartItemsHeight = cartItemsRef.current.offsetHeight;
+        const orderSummaryHeight = orderSummaryRef.current.scrollHeight;
+        const viewportHeight = window.innerHeight;
+
+        // If order summary is taller than viewport and cart items are shorter than order summary
+        const needsScroll =
+          orderSummaryHeight > viewportHeight - 200 &&
+          cartItemsHeight < orderSummaryHeight;
+        setShouldScroll(needsScroll);
+      }
+    };
+
+    // Check on mount and when cart items change
+    setTimeout(checkScrollNeed, 100); // Small delay to ensure DOM is updated
+
+    // Add resize listener
+    window.addEventListener("resize", checkScrollNeed);
+
+    return () => {
+      window.removeEventListener("resize", checkScrollNeed);
+    };
+  }, [cartItems, appliedCoupon, selectedAddress, suggestedCoupons]);
 
   // Fetch suggested coupons
   const fetchSuggestedCoupons = useCallback(async () => {
@@ -371,6 +403,7 @@ export default function CartPage() {
           {/* Cart Items */}
           <div className="lg:col-span-2">
             <motion.div
+              ref={cartItemsRef}
               className="bg-white rounded-xl shadow-sm p-6"
               variants={containerVariants}
               initial="hidden"
@@ -499,9 +532,19 @@ export default function CartPage() {
           {/* Order Summary */}
           <div className="lg:col-span-1">
             <motion.div
-              className="bg-white rounded-xl shadow-sm p-6 sticky top-8"
+              ref={orderSummaryRef}
+              className={`bg-white rounded-xl shadow-sm p-6 ${
+                shouldScroll
+                  ? "max-h-screen overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400"
+                  : "sticky top-8"
+              }`}
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
+              style={{
+                // Custom scrollbar styles for better appearance
+                scrollbarWidth: shouldScroll ? "thin" : "auto",
+                scrollbarColor: shouldScroll ? "#d1d5db #f3f4f6" : "auto",
+              }}
             >
               <h2 className="text-xl font-semibold text-gray-800 mb-6">
                 Order Summary
