@@ -356,10 +356,13 @@ export default function CartPage() {
             </div>
             <Link
               href="/"
-              className="flex items-center gap-2 text-blue-600 hover:text-blue-700 transition-colors"
+              className="group flex items-center gap-3 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 text-white px-6 py-2 rounded-full shadow-md border border-blue-400/30 font-semibold text-base hover:from-blue-600 hover:to-blue-900 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300 active:scale-95 transform-gpu hover:scale-105"
+              style={{ boxShadow: "0 4px 16px 0 rgba(30, 64, 175, 0.10)" }}
             >
-              <ArrowLeft className="w-5 h-5" />
-              Continue Shopping
+              <span className="flex items-center justify-center">
+                <ArrowLeft className="w-5 h-5 transition-transform duration-200 group-hover:-translate-x-1 group-hover:scale-110" />
+              </span>
+              <span className="tracking-wide">Continue Shopping</span>
             </Link>
           </div>
         </div>

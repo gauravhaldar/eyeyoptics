@@ -49,11 +49,11 @@ export default function Navbar() {
         {/* Brand Logo */}
         <Link href="/" className="inline-block flex-shrink-0">
           <Image
-            src="/logoe.png"
+            src="/optics.jpg"
             alt="Eyey Logo"
-            width={120} // Increased width
-            height={60} // Increased height
-            className="w-28 sm:w-36 h-auto" // Adjusted Tailwind width classes
+            width={80} // Increased width
+            height={40} // Increased height
+            className="w-16 sm:w-20 h-auto object-contain" // Adjusted Tailwind width classes
             priority
           />
         </Link>
