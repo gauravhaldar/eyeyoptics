@@ -13,11 +13,13 @@ import {
   Heart,
   Tag,
   X,
+  MapPin,
 } from "lucide-react";
 import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
 import { toast } from "../../components/Toast";
 import CouponModal from "../../components/CouponModal";
+import AddressModal from "../../components/AddressModal";
 
 export default function CartPage() {
   const { user } = useAuth();
@@ -41,6 +43,11 @@ export default function CartPage() {
   const [showCouponModal, setShowCouponModal] = useState(false);
   const [suggestedCoupons, setSuggestedCoupons] = useState([]);
 
+  // Address state
+  const [selectedAddress, setSelectedAddress] = useState(null);
+  const [showAddressModal, setShowAddressModal] = useState(false);
+  const [deliveryAvailable, setDeliveryAvailable] = useState(true);
+
   // Calculate totals
   const cartItemsArray = Object.values(cartItems);
   const subtotal = cartItemsArray.reduce(
@@ -53,7 +60,17 @@ export default function CartPage() {
   );
   const savings = originalTotal - subtotal;
   const tax = (subtotal - couponDiscount) * 0.18; // 18% tax after coupon discount
-  const shipping = subtotal - couponDiscount > 999 ? 0 : 99; // Free shipping above ₹999 after discount
+
+  // Calculate shipping based on selected address or default rules
+  let shipping = 0;
+  if (selectedAddress && selectedAddress.shippingInfo) {
+    // Use shipping cost from selected address
+    shipping = selectedAddress.shippingInfo.finalCharge;
+  } else {
+    // Default shipping rules (free shipping above ₹999 after discount)
+    shipping = subtotal - couponDiscount > 999 ? 0 : 99;
+  }
+
   const total = subtotal - couponDiscount + tax + shipping;
 
   // Fetch suggested coupons
@@ -251,6 +268,19 @@ export default function CartPage() {
     } finally {
       setCouponLoading(false);
     }
+  };
+
+  // Handle address added
+  const handleAddressAdded = (address) => {
+    setSelectedAddress(address);
+    setDeliveryAvailable(true);
+    console.log("Address added:", address);
+  };
+
+  // Handle remove address
+  const handleRemoveAddress = () => {
+    setSelectedAddress(null);
+    setDeliveryAvailable(true);
   };
 
   // Animation variants
@@ -590,6 +620,78 @@ export default function CartPage() {
                 </div>
               )}
 
+              {/* Address Section */}
+              <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <MapPin className="w-4 h-4" />
+                    Delivery Address
+                  </h3>
+                </div>
+
+                {!selectedAddress ? (
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => setShowAddressModal(true)}
+                      className="w-full px-4 py-3 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <MapPin className="w-4 h-4" />
+                      Add Delivery Address
+                    </button>
+                    <p className="text-xs text-gray-500 text-center">
+                      We'll check if we deliver to your location
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between p-3 bg-white border border-gray-200 rounded-md">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm font-medium text-gray-900">
+                            {selectedAddress.name}
+                          </span>
+                          <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">
+                            ✓ Available
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600">
+                          {selectedAddress.addressLine1}
+                          {selectedAddress.addressLine2 &&
+                            `, ${selectedAddress.addressLine2}`}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {selectedAddress.city}, {selectedAddress.state} -{" "}
+                          {selectedAddress.zipCode}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {selectedAddress.phone} • {selectedAddress.email}
+                        </p>
+                        {selectedAddress.shippingInfo && (
+                          <p className="text-xs text-blue-600 mt-1">
+                            Shipping: ₹
+                            {selectedAddress.shippingInfo.finalCharge} to{" "}
+                            {selectedAddress.shippingInfo.state}
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        onClick={handleRemoveAddress}
+                        className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors ml-2"
+                        title="Remove address"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => setShowAddressModal(true)}
+                      className="w-full px-3 py-2 text-sm text-blue-600 border border-blue-200 rounded-md hover:bg-blue-50 transition-colors"
+                    >
+                      Change Address
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <div className="space-y-4">
                 {/* Subtotal */}
                 <div className="flex justify-between">
@@ -629,7 +731,14 @@ export default function CartPage() {
 
                 {/* Shipping */}
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Shipping</span>
+                  <span className="text-gray-600">
+                    Shipping
+                    {selectedAddress && selectedAddress.shippingInfo && (
+                      <span className="text-xs text-gray-500 block">
+                        to {selectedAddress.shippingInfo.state}
+                      </span>
+                    )}
+                  </span>
                   <span className="font-semibold">
                     {shipping === 0 ? (
                       <span className="text-green-600">Free</span>
@@ -640,10 +749,21 @@ export default function CartPage() {
                 </div>
 
                 {/* Free shipping notice */}
-                {shipping > 0 && (
+                {shipping > 0 && !selectedAddress?.shippingInfo && (
                   <div className="text-sm text-blue-600 bg-blue-50 p-3 rounded-lg">
                     Add ₹{(1000 - (subtotal - couponDiscount)).toLocaleString()}{" "}
                     more for free shipping!
+                  </div>
+                )}
+
+                {/* Location-based shipping info */}
+                {selectedAddress?.shippingInfo && (
+                  <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                    📍 Shipping to {selectedAddress.shippingInfo.state}: ₹
+                    {selectedAddress.shippingInfo.finalCharge}
+                    {selectedAddress.shippingInfo.finalCharge === 0 && (
+                      <span className="text-green-600 ml-1">(Free)</span>
+                    )}
                   </div>
                 )}
 
@@ -655,9 +775,35 @@ export default function CartPage() {
                 </div>
 
                 {/* Checkout Button */}
-                <button className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors mt-6">
-                  Proceed to Checkout
-                </button>
+                {!selectedAddress ? (
+                  <div className="mt-6 space-y-2">
+                    <button
+                      disabled
+                      className="w-full bg-gray-400 text-white py-3 rounded-lg font-semibold cursor-not-allowed"
+                    >
+                      Add Address to Proceed
+                    </button>
+                    <p className="text-xs text-center text-gray-500">
+                      Please add a delivery address to continue
+                    </p>
+                  </div>
+                ) : !deliveryAvailable ? (
+                  <div className="mt-6 space-y-2">
+                    <button
+                      disabled
+                      className="w-full bg-red-400 text-white py-3 rounded-lg font-semibold cursor-not-allowed"
+                    >
+                      Delivery Not Available
+                    </button>
+                    <p className="text-xs text-center text-red-600">
+                      We don't deliver to this location yet
+                    </p>
+                  </div>
+                ) : (
+                  <button className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors mt-6">
+                    Proceed to Checkout
+                  </button>
+                )}
 
                 {/* Security Badge */}
                 <div className="text-center text-sm text-gray-500 mt-4">
@@ -675,6 +821,14 @@ export default function CartPage() {
         onClose={() => setShowCouponModal(false)}
         onSelectCoupon={handleSelectCouponFromModal}
         currentTotal={subtotal}
+      />
+
+      {/* Address Modal */}
+      <AddressModal
+        isOpen={showAddressModal}
+        onClose={() => setShowAddressModal(false)}
+        onAddressAdded={handleAddressAdded}
+        currentUser={user}
       />
     </div>
   );
