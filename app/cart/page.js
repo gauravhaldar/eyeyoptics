@@ -60,17 +60,39 @@ export default function CartPage() {
   const cartItemsRef = useRef(null);
   const orderSummaryRef = useRef(null);
 
-  // Calculate totals
-  const cartItemsArray = Object.values(cartItems);
-  const subtotal = cartItemsArray.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
+  // Single source of truth for subtotal calculation
+  const calculateSubtotal = useCallback(
+    (items = cartItems) => {
+      const itemsArray = Object.values(items);
+      return itemsArray.reduce(
+        (sum, item) => sum + item.price * item.quantity,
+        0
+      );
+    },
+    [cartItems]
   );
+
+  // Single source of truth for coupon discount calculation
+  const calculateCouponDiscount = useCallback((subtotalAmount, coupon) => {
+    if (!coupon) return 0;
+
+    if (coupon.type === "flat") {
+      return coupon.amount;
+    } else if (coupon.type === "percentage") {
+      return Math.floor((subtotalAmount * coupon.amount) / 100);
+    }
+    return 0;
+  }, []);
+
+  // Calculate totals with proper order
+  const cartItemsArray = Object.values(cartItems);
+  const subtotal = calculateSubtotal(cartItems);
   const originalTotal = cartItemsArray.reduce(
     (sum, item) => sum + (item.originalPrice || item.price) * item.quantity,
     0
   );
   const savings = originalTotal - subtotal;
+
   const tax = (subtotal - couponDiscount) * 0.18; // 18% tax after coupon discount
 
   // Calculate shipping based on selected address or default rules
@@ -115,6 +137,8 @@ export default function CartPage() {
   // Fetch suggested coupons
   const fetchSuggestedCoupons = useCallback(async () => {
     try {
+      const currentSubtotal = calculateSubtotal(cartItems);
+
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/admin/coupons?status=active&limit=3`
       );
@@ -125,8 +149,8 @@ export default function CartPage() {
         const applicableCoupons = data.data
           .filter(
             (coupon) =>
-              subtotal >= coupon.minValue &&
-              subtotal <= coupon.maxValue &&
+              currentSubtotal >= coupon.minValue &&
+              currentSubtotal <= coupon.maxValue &&
               coupon.usedCount < coupon.usageLimit
           )
           .slice(0, 2); // Show only 2 suggestions
@@ -136,7 +160,7 @@ export default function CartPage() {
     } catch (error) {
       console.error("Error fetching suggested coupons:", error);
     }
-  }, [subtotal]);
+  }, [calculateSubtotal, cartItems]);
 
   // Fetch cart on component mount
   useEffect(() => {
@@ -152,28 +176,49 @@ export default function CartPage() {
     }
   }, [subtotal, appliedCoupon, fetchSuggestedCoupons]);
 
-  // Reset coupon when cart items change
+  // Smart coupon validation when cart changes
   useEffect(() => {
-    if (appliedCoupon) {
-      // Re-validate coupon when cart total changes
-      const newSubtotal = Object.values(cartItems).reduce(
-        (sum, item) => sum + item.price * item.quantity,
-        0
-      );
+    if (appliedCoupon && cartItemsArray.length > 0) {
+      const currentSubtotal = calculateSubtotal(cartItems);
 
-      if (newSubtotal < appliedCoupon.minValue) {
+      console.log("Validating coupon:", {
+        couponCode: appliedCoupon.code,
+        currentSubtotal,
+        minValue: appliedCoupon.minValue,
+        maxValue: appliedCoupon.maxValue,
+        isValid:
+          currentSubtotal >= appliedCoupon.minValue &&
+          currentSubtotal <= appliedCoupon.maxValue,
+      });
+
+      if (currentSubtotal < appliedCoupon.minValue) {
         handleRemoveCoupon();
         toast.error(
-          `Cart total is below minimum value for coupon ${appliedCoupon.code}`
+          `Cart total (₹${currentSubtotal}) is below minimum value of ₹${appliedCoupon.minValue} for coupon ${appliedCoupon.code}`
         );
-      } else if (newSubtotal > appliedCoupon.maxValue) {
+      } else if (currentSubtotal > appliedCoupon.maxValue) {
         handleRemoveCoupon();
         toast.error(
-          `Cart total exceeds maximum value for coupon ${appliedCoupon.code}`
+          `Cart total (₹${currentSubtotal}) exceeds maximum value of ₹${appliedCoupon.maxValue} for coupon ${appliedCoupon.code}`
         );
+      } else {
+        // Recalculate discount if coupon is still valid
+        const newDiscount = calculateCouponDiscount(
+          currentSubtotal,
+          appliedCoupon
+        );
+        if (Math.abs(newDiscount - couponDiscount) > 0.01) {
+          setCouponDiscount(newDiscount);
+        }
       }
     }
-  }, [cartItems]);
+  }, [
+    cartItems,
+    appliedCoupon,
+    calculateSubtotal,
+    calculateCouponDiscount,
+    couponDiscount,
+  ]);
 
   // Handle quantity update
   const handleUpdateQuantity = async (cartKey, newQuantity) => {
@@ -211,6 +256,8 @@ export default function CartPage() {
       const success = await clearCart();
       if (success) {
         toast.success("Cart cleared successfully!");
+        // Reset coupon when cart is cleared
+        handleRemoveCoupon();
       } else {
         toast.error("Failed to clear cart");
       }
@@ -227,6 +274,14 @@ export default function CartPage() {
     setCouponLoading(true);
 
     try {
+      const currentSubtotal = calculateSubtotal(cartItems);
+
+      console.log("Applying coupon:", {
+        code: couponCode.trim(),
+        orderAmount: currentSubtotal,
+        currentSubtotal: currentSubtotal,
+      });
+
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/users/coupons/apply`,
         {
@@ -236,19 +291,25 @@ export default function CartPage() {
           },
           body: JSON.stringify({
             code: couponCode.trim(),
-            orderAmount: subtotal,
+            orderAmount: currentSubtotal,
           }),
         }
       );
 
       const data = await response.json();
+      console.log("Coupon response:", data);
 
       if (data.success) {
         setAppliedCoupon(data.data.couponDetails);
-        setCouponDiscount(data.data.discount);
-        toast.success(`Coupon applied! You saved ₹${data.data.discount}`);
+        const calculatedDiscount = calculateCouponDiscount(
+          currentSubtotal,
+          data.data.couponDetails
+        );
+        setCouponDiscount(calculatedDiscount);
+        toast.success(`Coupon applied! You saved ₹${calculatedDiscount}`);
       } else {
         toast.error(data.message || "Invalid coupon code");
+        setCouponCode("");
       }
     } catch (error) {
       console.error("Error applying coupon:", error);
@@ -274,6 +335,14 @@ export default function CartPage() {
     setCouponLoading(true);
 
     try {
+      const currentSubtotal = calculateSubtotal(cartItems);
+
+      console.log("Applying coupon from modal:", {
+        code: code,
+        orderAmount: currentSubtotal,
+        currentSubtotal: currentSubtotal,
+      });
+
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/users/coupons/apply`,
         {
@@ -283,18 +352,23 @@ export default function CartPage() {
           },
           body: JSON.stringify({
             code: code,
-            orderAmount: subtotal,
+            orderAmount: currentSubtotal,
           }),
         }
       );
 
       const data = await response.json();
+      console.log("Coupon modal response:", data);
 
       if (data.success) {
         setAppliedCoupon(data.data.couponDetails);
-        setCouponDiscount(data.data.discount);
+        const calculatedDiscount = calculateCouponDiscount(
+          currentSubtotal,
+          data.data.couponDetails
+        );
+        setCouponDiscount(calculatedDiscount);
         toast.success(
-          `Coupon ${code} applied! You saved ₹${data.data.discount}`
+          `Coupon ${code} applied! You saved ₹${calculatedDiscount}`
         );
       } else {
         toast.error(data.message || "Invalid coupon code");
@@ -342,7 +416,7 @@ export default function CartPage() {
     setOrderLoading(true);
 
     try {
-      // Prepare order data
+      // Prepare order data using current calculated values
       const orderData = {
         items: cartItemsArray.map((item) => ({
           productId: item.productId || item._id,
@@ -361,9 +435,9 @@ export default function CartPage() {
           subtotal,
           couponDiscount,
           couponCode: appliedCoupon?.code,
-          tax,
+          tax: Math.round(tax * 100) / 100, // Round to 2 decimal places
           shippingCharge: shipping,
-          total,
+          total: Math.round(total * 100) / 100, // Round to 2 decimal places
         },
         notes: "",
       };
@@ -386,6 +460,11 @@ export default function CartPage() {
       if (data.success) {
         // Clear cart after successful order
         await clearCart();
+
+        // Reset coupon state
+        setAppliedCoupon(null);
+        setCouponDiscount(0);
+        setCouponCode("");
 
         // Show success modal
         setOrderData(data.data);
@@ -718,38 +797,43 @@ export default function CartPage() {
                     Recommended for You
                   </h3>
                   <div className="space-y-2">
-                    {suggestedCoupons.map((coupon) => (
-                      <div
-                        key={coupon._id}
-                        className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-200 hover:border-blue-300 cursor-pointer transition-colors"
-                        onClick={() => handleSelectCouponFromModal(coupon.code)}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="p-1.5 bg-blue-100 rounded">
-                            <Tag className="w-3 h-3 text-blue-600" />
+                    {suggestedCoupons.map((coupon) => {
+                      const potentialDiscount = calculateCouponDiscount(
+                        subtotal,
+                        coupon
+                      );
+                      return (
+                        <div
+                          key={coupon._id}
+                          className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-200 hover:border-blue-300 cursor-pointer transition-colors"
+                          onClick={() =>
+                            handleSelectCouponFromModal(coupon.code)
+                          }
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="p-1.5 bg-blue-100 rounded">
+                              <Tag className="w-3 h-3 text-blue-600" />
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-gray-900">
+                                {coupon.code}
+                              </span>
+                              <p className="text-xs text-gray-600">
+                                {coupon.name}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <span className="text-sm font-medium text-gray-900">
-                              {coupon.code}
-                            </span>
-                            <p className="text-xs text-gray-600">
-                              {coupon.name}
+                          <div className="text-right">
+                            <p className="text-sm font-semibold text-green-600">
+                              Save ₹{potentialDiscount}
+                            </p>
+                            <p className="text-xs text-blue-600">
+                              Click to apply
                             </p>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-sm font-semibold text-green-600">
-                            Save ₹
-                            {coupon.type === "flat"
-                              ? coupon.amount
-                              : Math.floor((subtotal * coupon.amount) / 100)}
-                          </p>
-                          <p className="text-xs text-blue-600">
-                            Click to apply
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -928,7 +1012,7 @@ export default function CartPage() {
                 {/* Tax */}
                 <div className="flex justify-between">
                   <span className="text-gray-600">Tax (18%)</span>
-                  <span className="font-semibold">₹{tax.toFixed(0)}</span>
+                  <span className="font-semibold">₹{Math.round(tax)}</span>
                 </div>
 
                 {/* Shipping */}
@@ -953,7 +1037,11 @@ export default function CartPage() {
                 {/* Free shipping notice */}
                 {shipping > 0 && !selectedAddress?.shippingInfo && (
                   <div className="text-sm text-blue-600 bg-blue-50 p-3 rounded-lg">
-                    Add ₹{(1000 - (subtotal - couponDiscount)).toLocaleString()}{" "}
+                    Add ₹
+                    {Math.max(
+                      0,
+                      1000 - (subtotal - couponDiscount)
+                    ).toLocaleString()}{" "}
                     more for free shipping!
                   </div>
                 )}
@@ -972,7 +1060,7 @@ export default function CartPage() {
                 <div className="border-t pt-4">
                   <div className="flex justify-between text-lg font-bold">
                     <span>Total</span>
-                    <span>₹{total.toLocaleString()}</span>
+                    <span>₹{Math.round(total).toLocaleString()}</span>
                   </div>
                 </div>
 
@@ -1013,7 +1101,7 @@ export default function CartPage() {
                         Placing Order...
                       </>
                     ) : (
-                      `Place Order - ₹${total.toLocaleString()}`
+                      `Place Order - ₹${Math.round(total).toLocaleString()}`
                     )}
                   </button>
                 )}
