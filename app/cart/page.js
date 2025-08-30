@@ -20,6 +20,7 @@ import { useAuth } from "../../context/AuthContext";
 import { toast } from "../../components/Toast";
 import CouponModal from "../../components/CouponModal";
 import AddressModal from "../../components/AddressModal";
+import OrderSuccessModal from "../../components/OrderSuccessModal";
 
 export default function CartPage() {
   const { user } = useAuth();
@@ -47,6 +48,12 @@ export default function CartPage() {
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [deliveryAvailable, setDeliveryAvailable] = useState(true);
+
+  // Payment and order state
+  const [paymentMethod, setPaymentMethod] = useState("cash_on_delivery");
+  const [orderLoading, setOrderLoading] = useState(false);
+  const [showOrderSuccess, setShowOrderSuccess] = useState(false);
+  const [orderData, setOrderData] = useState(null);
 
   // Scroll state for order summary
   const [shouldScroll, setShouldScroll] = useState(false);
@@ -313,6 +320,87 @@ export default function CartPage() {
   const handleRemoveAddress = () => {
     setSelectedAddress(null);
     setDeliveryAvailable(true);
+  };
+
+  // Handle place order
+  const handlePlaceOrder = async () => {
+    if (!selectedAddress) {
+      toast.error("Please add a delivery address");
+      return;
+    }
+
+    if (!deliveryAvailable) {
+      toast.error("Delivery not available to this location");
+      return;
+    }
+
+    if (!paymentMethod) {
+      toast.error("Please select a payment method");
+      return;
+    }
+
+    setOrderLoading(true);
+
+    try {
+      // Prepare order data
+      const orderData = {
+        items: cartItemsArray.map((item) => ({
+          productId: item.productId || item._id,
+          name: item.name,
+          price: item.price,
+          originalPrice: item.originalPrice,
+          quantity: item.quantity,
+          size: item.size,
+          color: item.color,
+          category: item.category,
+          image: item.images?.[0] || item.image,
+        })),
+        shippingAddress: selectedAddress,
+        paymentMethod,
+        orderSummary: {
+          subtotal,
+          couponDiscount,
+          couponCode: appliedCoupon?.code,
+          tax,
+          shippingCharge: shipping,
+          total,
+        },
+        notes: "",
+      };
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/orders/create`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          credentials: "include",
+          body: JSON.stringify(orderData),
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Clear cart after successful order
+        await clearCart();
+
+        // Show success modal
+        setOrderData(data.data);
+        setShowOrderSuccess(true);
+
+        toast.success("Order placed successfully!");
+      } else {
+        toast.error(data.message || "Failed to place order");
+      }
+    } catch (error) {
+      console.error("Error placing order:", error);
+      toast.error("Failed to place order");
+    } finally {
+      setOrderLoading(false);
+    }
   };
 
   // Animation variants
@@ -738,6 +826,74 @@ export default function CartPage() {
                 )}
               </div>
 
+              {/* Payment Method Section */}
+              <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                    💳 Payment Method
+                  </h3>
+                </div>
+
+                <div className="space-y-3">
+                  {/* Cash on Delivery */}
+                  <div
+                    className={`p-3 border rounded-lg cursor-pointer transition-all ${
+                      paymentMethod === "cash_on_delivery"
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                    onClick={() => setPaymentMethod("cash_on_delivery")}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-4 h-4 rounded-full border-2 ${
+                            paymentMethod === "cash_on_delivery"
+                              ? "border-blue-500 bg-blue-500"
+                              : "border-gray-300"
+                          }`}
+                        >
+                          {paymentMethod === "cash_on_delivery" && (
+                            <div className="w-full h-full rounded-full bg-white scale-50"></div>
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-sm font-medium text-gray-900">
+                            Cash on Delivery
+                          </span>
+                          <p className="text-xs text-gray-500">
+                            Pay when your order is delivered
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full">
+                        Available
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Online Payment - Disabled */}
+                  <div className="p-3 border border-gray-200 rounded-lg opacity-50 cursor-not-allowed bg-gray-100">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-4 h-4 rounded-full border-2 border-gray-300"></div>
+                        <div>
+                          <span className="text-sm font-medium text-gray-600">
+                            Online Payment
+                          </span>
+                          <p className="text-xs text-gray-400">
+                            Credit/Debit Card, UPI, Net Banking
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-xs px-2 py-1 bg-gray-200 text-gray-600 rounded-full">
+                        Coming Soon
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-4">
                 {/* Subtotal */}
                 <div className="flex justify-between">
@@ -846,8 +1002,19 @@ export default function CartPage() {
                     </p>
                   </div>
                 ) : (
-                  <button className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors mt-6">
-                    Proceed to Checkout
+                  <button
+                    onClick={handlePlaceOrder}
+                    disabled={orderLoading}
+                    className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors mt-6 disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {orderLoading ? (
+                      <>
+                        <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
+                        Placing Order...
+                      </>
+                    ) : (
+                      `Place Order - ₹${total.toLocaleString()}`
+                    )}
                   </button>
                 )}
 
@@ -875,6 +1042,16 @@ export default function CartPage() {
         onClose={() => setShowAddressModal(false)}
         onAddressAdded={handleAddressAdded}
         currentUser={user}
+      />
+
+      {/* Order Success Modal */}
+      <OrderSuccessModal
+        isOpen={showOrderSuccess}
+        onClose={() => {
+          setShowOrderSuccess(false);
+          window.location.href = "/"; // Redirect to home
+        }}
+        orderData={orderData}
       />
     </div>
   );
