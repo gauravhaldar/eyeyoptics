@@ -60,6 +60,14 @@ export default function CartPage() {
   const cartItemsRef = useRef(null);
   const orderSummaryRef = useRef(null);
 
+  // Debug useEffect to monitor modal state
+  useEffect(() => {
+    console.log("🔍 Modal state changed:", {
+      showOrderSuccess,
+      orderData: !!orderData,
+    });
+  }, [showOrderSuccess, orderData]);
+
   // Single source of truth for subtotal calculation
   const calculateSubtotal = useCallback(
     (items = cartItems) => {
@@ -398,6 +406,11 @@ export default function CartPage() {
 
   // Handle place order
   const handlePlaceOrder = async () => {
+    console.log("=== ORDER PLACEMENT STARTED ===");
+    console.log("User:", user);
+    console.log("Selected address:", selectedAddress);
+    console.log("Cart items:", cartItemsArray);
+
     if (!selectedAddress) {
       toast.error("Please add a delivery address");
       return;
@@ -442,6 +455,8 @@ export default function CartPage() {
         notes: "",
       };
 
+      console.log("Making API request with data:", orderData);
+
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/orders/create`,
         {
@@ -455,30 +470,46 @@ export default function CartPage() {
         }
       );
 
+      console.log("Response status:", response.status);
       const data = await response.json();
+      console.log("API Response:", data);
 
       if (data.success) {
-        // Clear cart after successful order
-        await clearCart();
+        console.log("✅ Order successful - Setting modal data");
 
-        // Reset coupon state
-        setAppliedCoupon(null);
-        setCouponDiscount(0);
-        setCouponCode("");
-
-        // Show success modal
+        // FIRST: Set modal data and show modal
         setOrderData(data.data);
         setShowOrderSuccess(true);
 
+        console.log("Modal state set:", {
+          orderData: data.data,
+          showOrderSuccess: true,
+        });
+
+        // Force a small delay to ensure state is set
+        setTimeout(() => {
+          console.log("Checking modal state after delay:", {
+            showOrderSuccess: true,
+            orderDataExists: !!data.data,
+          });
+        }, 100);
+
         toast.success("Order placed successfully!");
+
+        // Don't clear cart automatically - let user decide when to close modal
+        console.log(
+          "✅ Order completed - cart will be cleared when user closes modal"
+        );
       } else {
+        console.error("❌ Order failed:", data.message);
         toast.error(data.message || "Failed to place order");
       }
     } catch (error) {
-      console.error("Error placing order:", error);
+      console.error("❌ Order placement error:", error);
       toast.error("Failed to place order");
     } finally {
       setOrderLoading(false);
+      console.log("=== ORDER PLACEMENT COMPLETED ===");
     }
   };
 
@@ -1135,9 +1166,29 @@ export default function CartPage() {
       {/* Order Success Modal */}
       <OrderSuccessModal
         isOpen={showOrderSuccess}
-        onClose={() => {
+        onClose={async (navigateTo = "/") => {
+          console.log(
+            "Modal close requested - clearing cart and navigating to:",
+            navigateTo
+          );
+
+          try {
+            // Clear cart and reset state when user closes modal
+            await clearCart();
+            setAppliedCoupon(null);
+            setCouponDiscount(0);
+            setCouponCode("");
+            console.log("✅ Cart cleared successfully");
+          } catch (error) {
+            console.error("❌ Error clearing cart:", error);
+          }
+
           setShowOrderSuccess(false);
-          window.location.href = "/"; // Redirect to home
+
+          // Navigate to specified page after clearing
+          setTimeout(() => {
+            window.location.href = navigateTo;
+          }, 100);
         }}
         orderData={orderData}
       />

@@ -5,30 +5,33 @@ import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle, X, Package, Truck, Clock } from "lucide-react";
 
 export default function OrderSuccessModal({ isOpen, onClose, orderData }) {
-  const [countdown, setCountdown] = useState(5);
+  // Debug logging
+  console.log("🔔 OrderSuccessModal render:", {
+    isOpen,
+    orderData: !!orderData,
+  });
 
-  useEffect(() => {
-    if (isOpen) {
-      setCountdown(5);
-      const timer = setInterval(() => {
-        setCountdown((prev) => {
-          if (prev <= 1) {
-            clearInterval(timer);
-            onClose();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+  const handleClose = () => {
+    console.log(
+      "🚪 Modal close requested - will clear cart and navigate to home"
+    );
+    onClose("/"); // Navigate to home
+  };
 
-      return () => clearInterval(timer);
-    }
-  }, [isOpen, onClose]);
+  const handleContinueShopping = () => {
+    console.log("🏠 Continue Shopping clicked");
+    onClose("/"); // Navigate to home
+  };
+
+  const handleViewOrders = () => {
+    console.log("📋 View Orders clicked");
+    onClose("/profile"); // Navigate to profile
+  };
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-white/30 backdrop-blur-md flex items-center justify-center p-4 z-[9999]">
           <motion.div
             initial={{ opacity: 0, scale: 0.8, y: 50 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -39,7 +42,7 @@ export default function OrderSuccessModal({ isOpen, onClose, orderData }) {
             {/* Header */}
             <div className="relative p-6 text-center">
               <button
-                onClick={onClose}
+                onClick={handleClose}
                 className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <X className="w-6 h-6" />
@@ -177,16 +180,13 @@ export default function OrderSuccessModal({ isOpen, onClose, orderData }) {
 
               <div className="flex gap-3">
                 <button
-                  onClick={onClose}
+                  onClick={handleContinueShopping}
                   className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
                 >
-                  Continue Shopping ({countdown}s)
+                  Continue Shopping
                 </button>
                 <button
-                  onClick={() => {
-                    onClose();
-                    // Navigate to orders page if needed
-                  }}
+                  onClick={handleViewOrders}
                   className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
                 >
                   View Orders
