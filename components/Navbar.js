@@ -25,16 +25,33 @@ export default function Navbar() {
   const [powerGlassesOpen, setPowerGlassesOpen] = useState(false);
   const [contactLensesOpen, setContactLensesOpen] = useState(false);
   const [mobileEyeglassesOpen, setMobileEyeglassesOpen] = useState(false);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
 
   // ✅ Use AuthContext
-  const { user, logout, fetchCurrentUser } = useAuth();
-  // ✅ Use CartContext
-  const { cartCount } = useCart();
+  const { user, logout } = useAuth();
+  const { cartCount } = useCart(); // ✅ Get cart count
+
+  // Add click outside handler for profile dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      // Close profile dropdown when clicking outside
+      if (
+        profileDropdownOpen &&
+        !event.target.closest(".profile-dropdown-container")
+      ) {
+        setProfileDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [profileDropdownOpen]);
 
   useEffect(() => {
     setIsClient(true); // Set client flag to true after hydration
-    fetchCurrentUser(); // Load current user if logged in
-  }, [fetchCurrentUser]);
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -70,32 +87,41 @@ export default function Navbar() {
             href="/contact"
             className="hover:text-gray-900 flex items-center gap-1"
           >
-             <span className="hidden lg:inline">Help</span>
+            <span className="hidden lg:inline">Help</span>
           </Link>
 
           {user ? (
             // ✅ Profile Icon + Dropdown if logged in
-            <div className="relative group">
-              <button className="hover:text-gray-900 flex items-center gap-2 focus:outline-none">
+            <div className="relative profile-dropdown-container">
+              <button
+                onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                className="hover:text-gray-900 flex items-center gap-2 focus:outline-none"
+              >
                 <FaUserCircle className="text-2xl text-gray-700 hover:text-gray-900" />
                 <span className="hidden lg:inline">
                   {user.name || "Profile"}
                 </span>
               </button>
-              <div className="absolute right-0 hidden group-hover:block bg-white shadow-md mt-2 rounded-md border w-40 z-50">
-                <Link
-                  href="/profile"
-                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  My Account
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
-                >
-                  Logout
-                </button>
-              </div>
+              {profileDropdownOpen && (
+                <div className="absolute right-0 bg-white shadow-md mt-2 rounded-md border w-40 z-50">
+                  <Link
+                    href="/profile"
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    onClick={() => setProfileDropdownOpen(false)}
+                  >
+                    My Account
+                  </Link>
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setProfileDropdownOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             // ✅ Show Sign In if not logged in
@@ -247,645 +273,645 @@ export default function Navbar() {
 
       {/* --- Category Navbar (Desktop) --- */}
       {isClient && (
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="bg-gray-100 border-t border-gray-300 hidden md:block"
-      >
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="bg-gray-100 border-t border-gray-300 hidden md:block"
+        >
           <nav className="w-full bg-white px-4 sm:px-6 py-2 sm:py-3 flex flex-wrap items-center justify-evenly text-gray-800 font-medium shadow-sm text-sm sm:text-base">
-          {/* Eyeglasses Dropdown */}
-          <div
-            className="relative"
-            onMouseEnter={() => setEyeglassesOpen(true)}
-            onMouseLeave={() => setEyeglassesOpen(false)}
-          >
-            <Link
-              href="/eyeglasses"
-              className="hover:text-gray-600 flex items-center gap-1"
+            {/* Eyeglasses Dropdown */}
+            <div
+              className="relative"
+              onMouseEnter={() => setEyeglassesOpen(true)}
+              onMouseLeave={() => setEyeglassesOpen(false)}
             >
-              Eyeglasses ▾
-            </Link>
-            <AnimatePresence>
-              {eyeglassesOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.2 }}
-                  className="absolute left-0 mt-2 w-[32rem] bg-white border border-gray-200 shadow-xl rounded-lg py-6 z-50"
-                >
-                  <div className="grid grid-cols-3 gap-8 px-6">
-                    {/* Gender Column */}
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-4 text-base uppercase tracking-wide">
-                        Gender
-                      </h3>
-                      <div className="space-y-3">
-                  <Link
-                    href="/men"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+              <Link
+                href="/eyeglasses"
+                className="hover:text-gray-600 flex items-center gap-1"
+              >
+                Eyeglasses ▾
+              </Link>
+              <AnimatePresence>
+                {eyeglassesOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute left-0 mt-2 w-[32rem] bg-white border border-gray-200 shadow-xl rounded-lg py-6 z-50"
                   >
-                    Men
-                  </Link>
-                  <Link
-                    href="/women"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                    <div className="grid grid-cols-3 gap-8 px-6">
+                      {/* Gender Column */}
+                      <div>
+                        <h3 className="font-semibold text-gray-900 mb-4 text-base uppercase tracking-wide">
+                          Gender
+                        </h3>
+                        <div className="space-y-3">
+                          <Link
+                            href="/men"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Men
+                          </Link>
+                          <Link
+                            href="/women"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Women
+                          </Link>
+                          <Link
+                            href="/kids"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Kids
+                          </Link>
+                        </div>
+                      </div>
+
+                      {/* Brands Column */}
+                      <div>
+                        <h3 className="font-semibold text-gray-900 mb-4 text-base uppercase tracking-wide">
+                          Brands
+                        </h3>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                          <Link
+                            href="/eyeglasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Gucci
+                          </Link>
+                          <Link
+                            href="/eyeglasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Ray-Ban
+                          </Link>
+                          <Link
+                            href="/eyeglasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Prada
+                          </Link>
+                          <Link
+                            href="/eyeglasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Killer
+                          </Link>
+                          <Link
+                            href="/eyeglasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Vogue
+                          </Link>
+                          <Link
+                            href="/eyeglasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Tommy Hilfiger
+                          </Link>
+                        </div>
+                      </div>
+
+                      {/* Shop by Frame Column */}
+                      <div>
+                        <h3 className="font-semibold text-gray-900 mb-4 text-base uppercase tracking-wide">
+                          Shop by Frame
+                        </h3>
+                        <div className="space-y-3">
+                          <Link
+                            href="/eyeglasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Full Frame
+                          </Link>
+                          <Link
+                            href="/eyeglasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Half Frame
+                          </Link>
+                          <Link
+                            href="/eyeglasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Rimless
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Other Categories */}
+            {/* Sunglasses Dropdown */}
+            <div
+              className="relative"
+              onMouseEnter={() => setSunglassesOpen(true)}
+              onMouseLeave={() => setSunglassesOpen(false)}
+            >
+              <Link
+                href="/sunglasses"
+                className="hover:text-gray-600 flex items-center gap-1"
+              >
+                Sunglasses ▾
+              </Link>
+              <AnimatePresence>
+                {sunglassesOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute left-0 mt-2 w-[32rem] bg-white border border-gray-200 shadow-xl rounded-lg py-6 z-50"
                   >
-                    Women
-                  </Link>
-                  <Link
-                    href="/kids"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                    <div className="grid grid-cols-3 gap-8 px-6">
+                      {/* Gender Column */}
+                      <div>
+                        <h3 className="font-semibold text-gray-900 mb-4 text-base uppercase tracking-wide">
+                          Gender
+                        </h3>
+                        <div className="space-y-3">
+                          <Link
+                            href="/men"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Men
+                          </Link>
+                          <Link
+                            href="/women"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Women
+                          </Link>
+                          <Link
+                            href="/kids"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Kids
+                          </Link>
+                        </div>
+                      </div>
+
+                      {/* Brands Column */}
+                      <div>
+                        <h3 className="font-semibold text-gray-900 mb-4 text-base uppercase tracking-wide">
+                          Brands
+                        </h3>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                          <Link
+                            href="/sunglasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Gucci
+                          </Link>
+                          <Link
+                            href="/sunglasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Ray-Ban
+                          </Link>
+                          <Link
+                            href="/sunglasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Prada
+                          </Link>
+                          <Link
+                            href="/sunglasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Killer
+                          </Link>
+                          <Link
+                            href="/sunglasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Vogue
+                          </Link>
+                          <Link
+                            href="/sunglasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Tommy Hilfiger
+                          </Link>
+                        </div>
+                      </div>
+
+                      {/* Shop by Frame Column */}
+                      <div>
+                        <h3 className="font-semibold text-gray-900 mb-4 text-base uppercase tracking-wide">
+                          Shop by Frame
+                        </h3>
+                        <div className="space-y-3">
+                          <Link
+                            href="/sunglasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Full Frame
+                          </Link>
+                          <Link
+                            href="/sunglasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Half Frame
+                          </Link>
+                          <Link
+                            href="/sunglasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Rimless
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+            {/* Computer Glasses Dropdown */}
+            <div
+              className="relative"
+              onMouseEnter={() => setComputerGlassesOpen(true)}
+              onMouseLeave={() => setComputerGlassesOpen(false)}
+            >
+              <Link
+                href="/computer-glasses"
+                className="hover:text-gray-600 flex items-center gap-1"
+              >
+                Computer Glasses ▾
+              </Link>
+              <AnimatePresence>
+                {computerGlassesOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute left-0 mt-2 w-[32rem] bg-white border border-gray-200 shadow-xl rounded-lg py-6 z-50"
                   >
-                    Kids
-                  </Link>
+                    <div className="grid grid-cols-3 gap-8 px-6">
+                      {/* Gender Column */}
+                      <div>
+                        <h3 className="font-semibold text-gray-900 mb-4 text-base uppercase tracking-wide">
+                          Gender
+                        </h3>
+                        <div className="space-y-3">
+                          <Link
+                            href="/men"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Men
+                          </Link>
+                          <Link
+                            href="/women"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Women
+                          </Link>
+                          <Link
+                            href="/kids"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Kids
+                          </Link>
+                        </div>
+                      </div>
+
+                      {/* Brands Column */}
+                      <div>
+                        <h3 className="font-semibold text-gray-900 mb-4 text-base uppercase tracking-wide">
+                          Brands
+                        </h3>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                          <Link
+                            href="/computer-glasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Gucci
+                          </Link>
+                          <Link
+                            href="/computer-glasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Ray-Ban
+                          </Link>
+                          <Link
+                            href="/computer-glasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Prada
+                          </Link>
+                          <Link
+                            href="/computer-glasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Killer
+                          </Link>
+                          <Link
+                            href="/computer-glasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Vogue
+                          </Link>
+                          <Link
+                            href="/computer-glasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Tommy Hilfiger
+                          </Link>
+                        </div>
+                      </div>
+
+                      {/* Shop by Frame Column */}
+                      <div>
+                        <h3 className="font-semibold text-gray-900 mb-4 text-base uppercase tracking-wide">
+                          Shop by Frame
+                        </h3>
+                        <div className="space-y-3">
+                          <Link
+                            href="/computer-glasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Full Frame
+                          </Link>
+                          <Link
+                            href="/computer-glasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Half Frame
+                          </Link>
+                          <Link
+                            href="/computer-glasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Rimless
+                          </Link>
+                        </div>
                       </div>
                     </div>
-
-                    {/* Brands Column */}
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-4 text-base uppercase tracking-wide">
-                        Brands
-                      </h3>
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                        <Link
-                          href="/eyeglasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Gucci
-                        </Link>
-                        <Link
-                          href="/eyeglasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Ray-Ban
-                        </Link>
-                        <Link
-                          href="/eyeglasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Prada
-                        </Link>
-                        <Link
-                          href="/eyeglasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Killer
-                        </Link>
-                        <Link
-                          href="/eyeglasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Vogue
-                        </Link>
-                        <Link
-                          href="/eyeglasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Tommy Hilfiger
-                        </Link>
-                      </div>
-                    </div>
-
-                    {/* Shop by Frame Column */}
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-4 text-base uppercase tracking-wide">
-                        Shop by Frame
-                      </h3>
-                      <div className="space-y-3">
-                        <Link
-                          href="/eyeglasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Full Frame
-                        </Link>
-                        <Link
-                          href="/eyeglasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Half Frame
-                        </Link>
-                        <Link
-                          href="/eyeglasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Rimless
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* Other Categories */}
-          {/* Sunglasses Dropdown */}
-          <div
-            className="relative"
-            onMouseEnter={() => setSunglassesOpen(true)}
-            onMouseLeave={() => setSunglassesOpen(false)}
-          >
-            <Link
-              href="/sunglasses"
-              className="hover:text-gray-600 flex items-center gap-1"
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+            {/* Power Glasses Dropdown */}
+            <div
+              className="relative"
+              onMouseEnter={() => setPowerGlassesOpen(true)}
+              onMouseLeave={() => setPowerGlassesOpen(false)}
             >
-              Sunglasses ▾
-            </Link>
-            <AnimatePresence>
-              {sunglassesOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.2 }}
-                  className="absolute left-0 mt-2 w-[32rem] bg-white border border-gray-200 shadow-xl rounded-lg py-6 z-50"
-                >
-                  <div className="grid grid-cols-3 gap-8 px-6">
-                    {/* Gender Column */}
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-4 text-base uppercase tracking-wide">
-                        Gender
-                      </h3>
-                      <div className="space-y-3">
-                        <Link
-                          href="/men"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Men
-                        </Link>
-                        <Link
-                          href="/women"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Women
-                        </Link>
-                        <Link
-                          href="/kids"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Kids
-                        </Link>
+              <Link
+                href="/power-glasses"
+                className="hover:text-gray-600 flex items-center gap-1"
+              >
+                Power Glasses ▾
+              </Link>
+              <AnimatePresence>
+                {powerGlassesOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute left-0 mt-2 w-[32rem] bg-white border border-gray-200 shadow-xl rounded-lg py-6 z-50"
+                  >
+                    <div className="grid grid-cols-3 gap-8 px-6">
+                      {/* Gender Column */}
+                      <div>
+                        <h3 className="font-semibold text-gray-900 mb-4 text-base uppercase tracking-wide">
+                          Gender
+                        </h3>
+                        <div className="space-y-3">
+                          <Link
+                            href="/men"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Men
+                          </Link>
+                          <Link
+                            href="/women"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Women
+                          </Link>
+                          <Link
+                            href="/kids"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Kids
+                          </Link>
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Brands Column */}
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-4 text-base uppercase tracking-wide">
-                        Brands
-                      </h3>
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                        <Link
-                          href="/sunglasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Gucci
-                        </Link>
-                        <Link
-                          href="/sunglasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Ray-Ban
-                        </Link>
-                        <Link
-                          href="/sunglasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Prada
-                        </Link>
-                        <Link
-                          href="/sunglasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Killer
-                        </Link>
-                        <Link
-                          href="/sunglasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Vogue
-                        </Link>
-                        <Link
-                          href="/sunglasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Tommy Hilfiger
-                        </Link>
+                      {/* Brands Column */}
+                      <div>
+                        <h3 className="font-semibold text-gray-900 mb-4 text-base uppercase tracking-wide">
+                          Brands
+                        </h3>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                          <Link
+                            href="/power-glasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Gucci
+                          </Link>
+                          <Link
+                            href="/power-glasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Ray-Ban
+                          </Link>
+                          <Link
+                            href="/power-glasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Prada
+                          </Link>
+                          <Link
+                            href="/power-glasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Killer
+                          </Link>
+                          <Link
+                            href="/power-glasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Vogue
+                          </Link>
+                          <Link
+                            href="/power-glasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Tommy Hilfiger
+                          </Link>
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Shop by Frame Column */}
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-4 text-base uppercase tracking-wide">
-                        Shop by Frame
-                      </h3>
-                      <div className="space-y-3">
-                        <Link
-                          href="/sunglasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Full Frame
-                        </Link>
-                        <Link
-                          href="/sunglasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Half Frame
-                        </Link>
-                        <Link
-                          href="/sunglasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Rimless
-          </Link>
+                      {/* Shop by Frame Column */}
+                      <div>
+                        <h3 className="font-semibold text-gray-900 mb-4 text-base uppercase tracking-wide">
+                          Shop by Frame
+                        </h3>
+                        <div className="space-y-3">
+                          <Link
+                            href="/power-glasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Full Frame
+                          </Link>
+                          <Link
+                            href="/power-glasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Half Frame
+                          </Link>
+                          <Link
+                            href="/power-glasses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Rimless
+                          </Link>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-          {/* Computer Glasses Dropdown */}
-          <div
-            className="relative"
-            onMouseEnter={() => setComputerGlassesOpen(true)}
-            onMouseLeave={() => setComputerGlassesOpen(false)}
-          >
-            <Link
-              href="/computer-glasses"
-              className="hover:text-gray-600 flex items-center gap-1"
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+            {/* Contact Lenses Dropdown */}
+            <div
+              className="relative"
+              onMouseEnter={() => setContactLensesOpen(true)}
+              onMouseLeave={() => setContactLensesOpen(false)}
             >
-              Computer Glasses ▾
+              <Link
+                href="/contact-lenses"
+                className="hover:text-gray-600 flex items-center gap-1"
+              >
+                Contact Lenses ▾
+              </Link>
+              <AnimatePresence>
+                {contactLensesOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute left-0 mt-2 w-[32rem] bg-white border border-gray-200 shadow-xl rounded-lg py-6 z-50"
+                  >
+                    <div className="grid grid-cols-3 gap-8 px-6">
+                      {/* Gender Column */}
+                      <div>
+                        <h3 className="font-semibold text-gray-900 mb-4 text-base uppercase tracking-wide">
+                          Gender
+                        </h3>
+                        <div className="space-y-3">
+                          <Link
+                            href="/men"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Men
+                          </Link>
+                          <Link
+                            href="/women"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Women
+                          </Link>
+                          <Link
+                            href="/kids"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Kids
+                          </Link>
+                        </div>
+                      </div>
+
+                      {/* Brands Column */}
+                      <div>
+                        <h3 className="font-semibold text-gray-900 mb-4 text-base uppercase tracking-wide">
+                          Brands
+                        </h3>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                          <Link
+                            href="/contact-lenses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Gucci
+                          </Link>
+                          <Link
+                            href="/contact-lenses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Ray-Ban
+                          </Link>
+                          <Link
+                            href="/contact-lenses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Prada
+                          </Link>
+                          <Link
+                            href="/contact-lenses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Killer
+                          </Link>
+                          <Link
+                            href="/contact-lenses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Vogue
+                          </Link>
+                          <Link
+                            href="/contact-lenses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Tommy Hilfiger
+                          </Link>
+                        </div>
+                      </div>
+
+                      {/* Shop by Frame Column */}
+                      <div>
+                        <h3 className="font-semibold text-gray-900 mb-4 text-base uppercase tracking-wide">
+                          Shop by Frame
+                        </h3>
+                        <div className="space-y-3">
+                          <Link
+                            href="/contact-lenses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Full Frame
+                          </Link>
+                          <Link
+                            href="/contact-lenses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Half Frame
+                          </Link>
+                          <Link
+                            href="/contact-lenses"
+                            className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
+                          >
+                            Rimless
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+            <Link href="/new-arrivals" className="hover:text-gray-600">
+              New Arrivals
             </Link>
-            <AnimatePresence>
-              {computerGlassesOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.2 }}
-                  className="absolute left-0 mt-2 w-[32rem] bg-white border border-gray-200 shadow-xl rounded-lg py-6 z-50"
-                >
-                  <div className="grid grid-cols-3 gap-8 px-6">
-                    {/* Gender Column */}
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-4 text-base uppercase tracking-wide">
-                        Gender
-                      </h3>
-                      <div className="space-y-3">
-                        <Link
-                          href="/men"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Men
-                        </Link>
-                        <Link
-                          href="/women"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Women
-                        </Link>
-                        <Link
-                          href="/kids"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Kids
-                        </Link>
-                      </div>
-                    </div>
-
-                    {/* Brands Column */}
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-4 text-base uppercase tracking-wide">
-                        Brands
-                      </h3>
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                        <Link
-                          href="/computer-glasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Gucci
-                        </Link>
-                        <Link
-                          href="/computer-glasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Ray-Ban
-                        </Link>
-                        <Link
-                          href="/computer-glasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Prada
-                        </Link>
-                        <Link
-                          href="/computer-glasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Killer
-                        </Link>
-                        <Link
-                          href="/computer-glasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Vogue
-                        </Link>
-                        <Link
-                          href="/computer-glasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Tommy Hilfiger
-                        </Link>
-                      </div>
-                    </div>
-
-                    {/* Shop by Frame Column */}
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-4 text-base uppercase tracking-wide">
-                        Shop by Frame
-                      </h3>
-                      <div className="space-y-3">
-                        <Link
-                          href="/computer-glasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Full Frame
-                        </Link>
-                        <Link
-                          href="/computer-glasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Half Frame
-                        </Link>
-                        <Link
-                          href="/computer-glasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Rimless
-          </Link>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-          {/* Power Glasses Dropdown */}
-          <div
-            className="relative"
-            onMouseEnter={() => setPowerGlassesOpen(true)}
-            onMouseLeave={() => setPowerGlassesOpen(false)}
-          >
-            <Link
-              href="/power-glasses"
-              className="hover:text-gray-600 flex items-center gap-1"
-            >
-              Power Glasses ▾
-            </Link>
-            <AnimatePresence>
-              {powerGlassesOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.2 }}
-                  className="absolute left-0 mt-2 w-[32rem] bg-white border border-gray-200 shadow-xl rounded-lg py-6 z-50"
-                >
-                  <div className="grid grid-cols-3 gap-8 px-6">
-                    {/* Gender Column */}
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-4 text-base uppercase tracking-wide">
-                        Gender
-                      </h3>
-                      <div className="space-y-3">
-                        <Link
-                          href="/men"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Men
-                        </Link>
-                        <Link
-                          href="/women"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Women
-                        </Link>
-                        <Link
-                          href="/kids"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Kids
-                        </Link>
-                      </div>
-                    </div>
-
-                    {/* Brands Column */}
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-4 text-base uppercase tracking-wide">
-                        Brands
-                      </h3>
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                        <Link
-                          href="/power-glasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Gucci
-                        </Link>
-                        <Link
-                          href="/power-glasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Ray-Ban
-                        </Link>
-                        <Link
-                          href="/power-glasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Prada
-                        </Link>
-                        <Link
-                          href="/power-glasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Killer
-                        </Link>
-                        <Link
-                          href="/power-glasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Vogue
-                        </Link>
-                        <Link
-                          href="/power-glasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Tommy Hilfiger
-                        </Link>
-                      </div>
-                    </div>
-
-                    {/* Shop by Frame Column */}
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-4 text-base uppercase tracking-wide">
-                        Shop by Frame
-                      </h3>
-                      <div className="space-y-3">
-                        <Link
-                          href="/power-glasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Full Frame
-                        </Link>
-                        <Link
-                          href="/power-glasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Half Frame
-                        </Link>
-                        <Link
-                          href="/power-glasses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Rimless
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-          {/* Contact Lenses Dropdown */}
-          <div
-            className="relative"
-            onMouseEnter={() => setContactLensesOpen(true)}
-            onMouseLeave={() => setContactLensesOpen(false)}
-          >
-            <Link
-              href="/contact-lenses"
-              className="hover:text-gray-600 flex items-center gap-1"
-            >
-              Contact Lenses ▾
-            </Link>
-            <AnimatePresence>
-              {contactLensesOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.2 }}
-                  className="absolute left-0 mt-2 w-[32rem] bg-white border border-gray-200 shadow-xl rounded-lg py-6 z-50"
-                >
-                  <div className="grid grid-cols-3 gap-8 px-6">
-                    {/* Gender Column */}
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-4 text-base uppercase tracking-wide">
-                        Gender
-                      </h3>
-                      <div className="space-y-3">
-                        <Link
-                          href="/men"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Men
-                        </Link>
-                        <Link
-                          href="/women"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Women
-                        </Link>
-                        <Link
-                          href="/kids"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Kids
-                        </Link>
-                      </div>
-                    </div>
-
-                    {/* Brands Column */}
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-4 text-base uppercase tracking-wide">
-                        Brands
-                      </h3>
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                        <Link
-                          href="/contact-lenses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Gucci
-                        </Link>
-                        <Link
-                          href="/contact-lenses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Ray-Ban
-                        </Link>
-                        <Link
-                          href="/contact-lenses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Prada
-                        </Link>
-                        <Link
-                          href="/contact-lenses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Killer
-                        </Link>
-                        <Link
-                          href="/contact-lenses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Vogue
-                        </Link>
-                        <Link
-                          href="/contact-lenses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Tommy Hilfiger
-                        </Link>
-                      </div>
-                    </div>
-
-                    {/* Shop by Frame Column */}
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-4 text-base uppercase tracking-wide">
-                        Shop by Frame
-                      </h3>
-                      <div className="space-y-3">
-                        <Link
-                          href="/contact-lenses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Full Frame
-                        </Link>
-                        <Link
-                          href="/contact-lenses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Half Frame
-          </Link>
-                        <Link
-                          href="/contact-lenses"
-                          className="block text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-2 py-1 rounded text-sm"
-                        >
-                          Rimless
-          </Link>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-          <Link href="/new-arrivals" className="hover:text-gray-600">
-            New Arrivals
-          </Link>
-        </nav>
-      </motion.div>
+          </nav>
+        </motion.div>
       )}
     </div>
   );
