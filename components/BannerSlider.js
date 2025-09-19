@@ -20,7 +20,7 @@ export default function BannerSlider() {
   }, [slides.length]);
 
   return (
-    <div className="relative w-full h-[145px] sm:h-[300px] md:h-[400px] lg:h-[400px] overflow-hidden bg-gray-800">
+    <div className="relative w-full h-[145px] sm:h-[300px] md:h-[400px] lg:h-[450px] overflow-hidden ">
       {slides.map((slide, index) => (
         <div
           key={slide.id}
@@ -33,7 +33,7 @@ export default function BannerSlider() {
             alt={`Slide ${index + 1}`}
             fill
             priority={index === 0}
-            className="object-contain sm:object-cover object-center"
+            className="object-contain object-center"
           />
         </div>
       ))}
