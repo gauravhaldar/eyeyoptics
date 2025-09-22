@@ -48,6 +48,8 @@ export default function CartPage() {
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [deliveryAvailable, setDeliveryAvailable] = useState(true);
+  const [userAddresses, setUserAddresses] = useState([]);
+  const [addressLoading, setAddressLoading] = useState(false);
 
   // Payment and order state
   const [paymentMethod, setPaymentMethod] = useState("cash_on_delivery");
@@ -170,12 +172,59 @@ export default function CartPage() {
     }
   }, [calculateSubtotal, cartItems]);
 
+  // Fetch user addresses
+  const fetchUserAddresses = useCallback(async () => {
+    if (!user?._id) return;
+    
+    setAddressLoading(true);
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/addresses`, {
+        method: "GET",
+        credentials: "include",
+      });
+      
+      // Handle 404 specifically (API not deployed yet)
+      if (response.status === 404) {
+        console.log("Address API not available yet");
+        setUserAddresses([]);
+        return;
+      }
+      
+      // Check if response is JSON
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Server returned non-JSON response");
+      }
+      
+      const data = await response.json();
+      if (data.success) {
+        setUserAddresses(data.data || []);
+        
+        // Auto-select default address if available
+        const defaultAddress = data.data?.find(addr => addr.isDefault);
+        if (defaultAddress) {
+          setSelectedAddress(defaultAddress);
+          setDeliveryAvailable(true);
+        }
+      } else {
+        console.error("Failed to fetch addresses:", data.message);
+        setUserAddresses([]);
+      }
+    } catch (error) {
+      console.error("Error fetching addresses:", error);
+      setUserAddresses([]);
+    } finally {
+      setAddressLoading(false);
+    }
+  }, [user?._id]);
+
   // Fetch cart on component mount
   useEffect(() => {
     if (user?._id) {
       fetchCart();
+      fetchUserAddresses();
     }
-  }, [user, fetchCart]);
+  }, [user, fetchCart, fetchUserAddresses]);
 
   // Fetch suggested coupons when subtotal changes
   useEffect(() => {
@@ -396,6 +445,8 @@ export default function CartPage() {
   const handleAddressAdded = (address) => {
     setSelectedAddress(address);
     setDeliveryAvailable(true);
+    // Refresh addresses list to include the new address
+    fetchUserAddresses();
     console.log("Address added:", address);
   };
 
@@ -879,7 +930,12 @@ export default function CartPage() {
                   </h3>
                 </div>
 
-                {!selectedAddress ? (
+                {addressLoading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                    <span className="ml-2 text-sm text-gray-600">Loading addresses...</span>
+                  </div>
+                ) : !selectedAddress && userAddresses.length === 0 ? (
                   <div className="space-y-2">
                     <button
                       onClick={() => setShowAddressModal(true)}
@@ -892,7 +948,68 @@ export default function CartPage() {
                       We&apos;ll check if we deliver to your location
                     </p>
                   </div>
-                ) : (
+                ) : !selectedAddress && userAddresses.length > 0 ? (
+                  <div className="space-y-3">
+                    <p className="text-sm text-gray-600 mb-2">Select from your saved addresses:</p>
+                    {userAddresses.map((address) => (
+                      <div
+                        key={address._id}
+                        className={`p-3 border rounded-md cursor-pointer transition-all ${
+                          selectedAddress?._id === address._id
+                            ? "border-blue-500 bg-blue-50"
+                            : "border-gray-200 hover:border-gray-300"
+                        }`}
+                        onClick={() => {
+                          setSelectedAddress(address);
+                          setDeliveryAvailable(true);
+                        }}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-sm font-medium text-gray-900">
+                                {address.name}
+                              </span>
+                              {address.isDefault && (
+                                <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
+                                  Default
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-600">
+                              {address.address}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              {address.city}, {address.state} - {address.pincode}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {address.phone}
+                            </p>
+                          </div>
+                          <div className="ml-2">
+                            <div
+                              className={`w-4 h-4 rounded-full border-2 ${
+                                selectedAddress?._id === address._id
+                                  ? "border-blue-500 bg-blue-500"
+                                  : "border-gray-300"
+                              }`}
+                            >
+                              {selectedAddress?._id === address._id && (
+                                <div className="w-full h-full rounded-full bg-white scale-50"></div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => setShowAddressModal(true)}
+                      className="w-full px-3 py-2 text-sm text-blue-600 border border-blue-200 rounded-md hover:bg-blue-50 transition-colors"
+                    >
+                      Add New Address
+                    </button>
+                  </div>
+                ) : selectedAddress ? (
                   <div className="space-y-3">
                     <div className="flex items-start justify-between p-3 bg-white border border-gray-200 rounded-md">
                       <div className="flex-1">
@@ -903,18 +1020,20 @@ export default function CartPage() {
                           <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">
                             ✓ Available
                           </span>
+                          {selectedAddress.isDefault && (
+                            <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
+                              Default
+                            </span>
+                          )}
                         </div>
                         <p className="text-sm text-gray-600">
-                          {selectedAddress.addressLine1}
-                          {selectedAddress.addressLine2 &&
-                            `, ${selectedAddress.addressLine2}`}
+                          {selectedAddress.address}
                         </p>
                         <p className="text-sm text-gray-600">
-                          {selectedAddress.city}, {selectedAddress.state} -{" "}
-                          {selectedAddress.zipCode}
+                          {selectedAddress.city}, {selectedAddress.state} - {selectedAddress.pincode}
                         </p>
                         <p className="text-xs text-gray-500 mt-1">
-                          {selectedAddress.phone} • {selectedAddress.email}
+                          {selectedAddress.phone}
                         </p>
                         {selectedAddress.shippingInfo && (
                           <p className="text-xs text-blue-600 mt-1">
@@ -939,7 +1058,7 @@ export default function CartPage() {
                       Change Address
                     </button>
                   </div>
-                )}
+                ) : null}
               </div>
 
               {/* Payment Method Section */}
