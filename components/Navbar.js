@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { FiMenu, FiX, FiChevronDown } from "react-icons/fi";
 import { FaUserCircle } from "react-icons/fa";
@@ -10,6 +11,7 @@ import { useAuth } from "../context/AuthContext"; // ✅ Import Auth Context
 import { useCart } from "../context/CartContext"; // ✅ Import Cart Context
 
 export default function Navbar() {
+  const router = useRouter();
   const [isClient, setIsClient] = useState(false);
   const offers = [
     "🎉 Flat 50% Off on Eyeglasses + Extra 10% with Code: EYE10",
@@ -62,7 +64,7 @@ export default function Navbar() {
 
   const handleLogout = async () => {
     await logout();
-    window.location.href = "/"; // redirect after logout
+    router.push("/"); // Use Next.js router instead of window.location.href
   };
 
   return (

@@ -7,6 +7,14 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [hasLoggedOut, setHasLoggedOut] = useState(() => {
+    // Check if user has recently logged out (persist across reloads)
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('hasLoggedOut') === 'true';
+    }
+    return false;
+  });
 
   const safeParse = (str) => {
     try {
@@ -21,6 +29,20 @@ export const AuthProvider = ({ children }) => {
     const initializeAuth = async () => {
       console.log("🔄 AuthContext: Starting initialization");
       setIsLoading(true);
+
+      // Check if logout flag has expired (5 minutes)
+      const logoutTime = localStorage.getItem('logoutTime');
+      if (logoutTime) {
+        const timeSinceLogout = Date.now() - parseInt(logoutTime);
+        const fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
+        
+        if (timeSinceLogout > fiveMinutes) {
+          console.log("🕒 Logout flag expired, clearing it");
+          localStorage.removeItem('hasLoggedOut');
+          localStorage.removeItem('logoutTime');
+          setHasLoggedOut(false);
+        }
+      }
 
       const savedUser = localStorage.getItem("user");
       if (savedUser) {
@@ -38,7 +60,7 @@ export const AuthProvider = ({ children }) => {
         console.log("❌ AuthContext: No user found in localStorage");
       }
 
-      // Fetch current user from backend if cookies exist
+      // Always fetch current user from backend on initialization
       console.log("🔄 AuthContext: Fetching current user from backend");
       await fetchCurrentUser();
       setIsLoading(false);
@@ -46,7 +68,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     initializeAuth();
-  }, []);
+  }, []); // Empty dependency array - only run once on mount
 
   const signup = async (name, email, password) => {
     const res = await fetch(
@@ -90,6 +112,9 @@ export const AuthProvider = ({ children }) => {
       // Set user data immediately from login response
       setUser(data);
       localStorage.setItem("user", JSON.stringify(data));
+      setHasLoggedOut(false); // Reset logout flag on successful login
+      localStorage.removeItem('hasLoggedOut'); // Clear persisted logout state
+      localStorage.removeItem('logoutTime'); // Clear logout timestamp
 
       // Also fetch current user to ensure session is valid
       await fetchCurrentUser();
@@ -101,6 +126,12 @@ export const AuthProvider = ({ children }) => {
   };
 
   const fetchCurrentUser = async () => {
+    // Don't fetch if user is logging out or has recently logged out
+    if (isLoggingOut || hasLoggedOut) {
+      console.log("🚪 fetchCurrentUser: Skipping - user is logging out or has logged out");
+      return null;
+    }
+
     try {
       console.log(
         "🔄 Fetching current user from:",
@@ -143,13 +174,32 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/logout`, {
-      method: "POST",
-      credentials: "include",
-    });
+    console.log("🚪 Starting logout process");
+    setIsLoggingOut(true);
+    setHasLoggedOut(true);
+    localStorage.setItem('hasLoggedOut', 'true'); // Persist logout state
+    localStorage.setItem('logoutTime', Date.now().toString()); // Store logout timestamp
+    
+    try {
+      // Try to logout from backend, but don't fail if it doesn't work
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+      console.log("✅ Backend logout successful");
+    } catch (error) {
+      console.log("⚠️ Backend logout failed, but continuing with local logout:", error);
+    }
+    
+    // Always clear local state regardless of backend response
     setUser(null);
     localStorage.removeItem("user");
     console.log("🚪 User logged out successfully");
+    
+    // Reset the logging out flag after a short delay
+    setTimeout(() => {
+      setIsLoggingOut(false);
+    }, 1000);
   };
 
   const updateProfile = async (name, email, password) => {
@@ -191,6 +241,7 @@ export const AuthProvider = ({ children }) => {
         fetchCurrentUser,
         updateProfile,
         isLoading,
+        isLoggingOut,
       }}
     >
       {children}

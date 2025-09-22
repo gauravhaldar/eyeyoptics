@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 
 export default function SignInPage() {
-  const { login, signup, user, fetchCurrentUser } = useAuth();
+  const { login, signup, user, fetchCurrentUser, isLoggingOut, hasLoggedOut } = useAuth();
   const [isSignup, setIsSignup] = useState(false);
 
   const [form, setForm] = useState({
@@ -47,8 +47,14 @@ export default function SignInPage() {
   useEffect(() => {
     console.log("🔄 SignIn page mounting, testing API connection...");
     testAPIConnection();
-    fetchCurrentUser();
-  }, [fetchCurrentUser]);
+    
+    // Only fetch current user if not logging out or hasn't recently logged out
+    if (!isLoggingOut && !hasLoggedOut) {
+      fetchCurrentUser();
+    } else {
+      console.log("🚪 SignIn page: Skipping fetchCurrentUser - user is logging out or has logged out");
+    }
+  }, [fetchCurrentUser, isLoggingOut, hasLoggedOut]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

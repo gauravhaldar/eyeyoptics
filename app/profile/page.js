@@ -14,6 +14,9 @@ import {
   FaCalendarAlt,
   FaEye,
   FaBox,
+  FaMapMarkerAlt,
+  FaPlus,
+  FaTrash,
 } from "react-icons/fa";
 import { useRouter } from "next/navigation";
 import { API_ENDPOINTS } from "../../config";
@@ -36,6 +39,22 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState("profile");
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showOrderDetails, setShowOrderDetails] = useState(false);
+
+  // Address states
+  const [addresses, setAddresses] = useState([]);
+  const [addressLoading, setAddressLoading] = useState(false);
+  const [showAddressForm, setShowAddressForm] = useState(false);
+  const [editingAddress, setEditingAddress] = useState(null);
+  const [addressForm, setAddressForm] = useState({
+    name: "",
+    phone: "",
+    address: "",
+    city: "",
+    state: "",
+    pincode: "",
+    country: "India",
+    isDefault: false,
+  });
 
   const [formData, setFormData] = useState({
     name: "",
@@ -67,6 +86,54 @@ export default function ProfilePage() {
       console.log("✅ Profile page: Auth state", { authLoading, user: !!user });
     }
   }, [user, router, authLoading]);
+
+  // Fetch addresses when user is available
+  useEffect(() => {
+    if (!user?._id || activeTab !== "addresses") return;
+    
+    const fetchAddresses = async () => {
+      setAddressLoading(true);
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/addresses`, {
+          method: "GET",
+          credentials: "include",
+        });
+        
+        // Handle 404 specifically (API not deployed yet)
+        if (response.status === 404) {
+          setMessage("Address management is coming soon! Please check back later.");
+          setAddresses([]);
+          return;
+        }
+        
+        // Check if response is JSON
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          throw new Error("Server returned non-JSON response");
+        }
+        
+        const data = await response.json();
+        if (data.success) {
+          setAddresses(data.data || []);
+        } else {
+          console.error("Failed to fetch addresses:", data.message);
+          setMessage(`Failed to fetch addresses: ${data.message}`);
+        }
+      } catch (error) {
+        console.error("Error fetching addresses:", error);
+        if (error.message.includes("404")) {
+          setMessage("Address management is coming soon! Please check back later.");
+        } else {
+          setMessage("Error fetching addresses. Please try again later.");
+        }
+        setAddresses([]); // Set empty array on error
+      } finally {
+        setAddressLoading(false);
+      }
+    };
+
+    fetchAddresses();
+  }, [user?._id, activeTab]);
 
   // Fetch orders when user is available
   useEffect(() => {
@@ -171,6 +238,151 @@ export default function ProfilePage() {
   const handleViewOrder = (order) => {
     setSelectedOrder(order);
     setShowOrderDetails(true);
+  };
+
+  // Address management functions
+  const handleAddressChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setAddressForm(prev => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value
+    }));
+  };
+
+  const handleAddAddress = () => {
+    setEditingAddress(null);
+    setAddressForm({
+      name: "",
+      phone: "",
+      address: "",
+      city: "",
+      state: "",
+      pincode: "",
+      country: "India",
+      isDefault: false,
+    });
+    setShowAddressForm(true);
+  };
+
+  const handleEditAddress = (address) => {
+    setEditingAddress(address);
+    setAddressForm({
+      name: address.name || "",
+      phone: address.phone || "",
+      address: address.address || "",
+      city: address.city || "",
+      state: address.state || "",
+      pincode: address.pincode || "",
+      country: address.country || "India",
+      isDefault: address.isDefault || false,
+    });
+    setShowAddressForm(true);
+  };
+
+  const handleSaveAddress = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    try {
+      const url = editingAddress 
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/users/addresses/${editingAddress._id}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/api/users/addresses`;
+      
+      const method = editingAddress ? "PUT" : "POST";
+      
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(addressForm),
+      });
+      
+      // Handle 404 specifically (API not deployed yet)
+      if (response.status === 404) {
+        setMessage("Address management is coming soon! Please check back later.");
+        return;
+      }
+      
+      // Check if response is JSON
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Server returned non-JSON response");
+      }
+      
+      const data = await response.json();
+      if (data.success) {
+        setMessage(`Address ${editingAddress ? 'updated' : 'added'} successfully!`);
+        setShowAddressForm(false);
+        setEditingAddress(null);
+        
+        // Refresh addresses list
+        if (activeTab === "addresses") {
+          const refreshResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/addresses`, {
+            method: "GET",
+            credentials: "include",
+          });
+          const refreshData = await refreshResponse.json();
+          if (refreshData.success) {
+            setAddresses(refreshData.data || []);
+          }
+        }
+      } else {
+        setMessage(`Failed to ${editingAddress ? 'update' : 'add'} address: ${data.message}`);
+      }
+    } catch (error) {
+      setMessage(`Error ${editingAddress ? 'updating' : 'adding'} address: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteAddress = async (addressId) => {
+    if (!confirm("Are you sure you want to delete this address?")) return;
+    
+    setLoading(true);
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/addresses/${addressId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        setMessage("Address deleted successfully!");
+        setAddresses(addresses.filter(addr => addr._id !== addressId));
+      } else {
+        setMessage(`Failed to delete address: ${data.message}`);
+      }
+    } catch (error) {
+      setMessage(`Error deleting address: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSetDefaultAddress = async (addressId) => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/addresses/${addressId}/default`, {
+        method: "PUT",
+        credentials: "include",
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        setMessage("Default address updated successfully!");
+        setAddresses(addresses.map(addr => ({
+          ...addr,
+          isDefault: addr._id === addressId
+        })));
+      } else {
+        setMessage(`Failed to set default address: ${data.message}`);
+      }
+    } catch (error) {
+      setMessage(`Error setting default address: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Debug function to test authentication
@@ -351,6 +563,17 @@ export default function ProfilePage() {
               >
                 <FaUser />
                 <span>Profile</span>
+              </button>
+              <button
+                onClick={() => setActiveTab("addresses")}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 ${
+                  activeTab === "addresses"
+                    ? "bg-white text-gray-700"
+                    : "bg-transparent text-gray-200 hover:text-white"
+                }`}
+              >
+                <FaMapMarkerAlt />
+                <span>Addresses</span>
               </button>
               <button
                 onClick={() => setActiveTab("orders")}
@@ -670,6 +893,97 @@ export default function ProfilePage() {
                 )}
               </div>
             )}
+
+            {/* Addresses Tab */}
+            {activeTab === "addresses" && (
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-gray-800">My Addresses</h2>
+                  <button
+                    onClick={handleAddAddress}
+                    className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center space-x-2"
+                  >
+                    <FaPlus />
+                    <span>Add Address</span>
+                  </button>
+                </div>
+
+                {addressLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+                  </div>
+                ) : addresses.length === 0 ? (
+                  <div className="text-center py-12">
+                    <FaMapMarkerAlt className="mx-auto h-16 w-16 text-gray-400 mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No addresses yet</h3>
+                    <p className="text-gray-600 mb-6">Add your first address to make checkout easier!</p>
+                    <button
+                      onClick={handleAddAddress}
+                      className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:opacity-90 transition-opacity"
+                    >
+                      Add Address
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {addresses.map((address) => (
+                      <motion.div
+                        key={address._id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`bg-white rounded-xl shadow-md p-6 border-2 ${
+                          address.isDefault ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center space-x-2">
+                            <FaMapMarkerAlt className={`text-lg ${address.isDefault ? 'text-indigo-600' : 'text-gray-400'}`} />
+                            <h3 className="font-semibold text-gray-900">{address.name}</h3>
+                            {address.isDefault && (
+                              <span className="bg-indigo-100 text-indigo-800 text-xs px-2 py-1 rounded-full font-medium">
+                                Default
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => handleEditAddress(address)}
+                              className="text-gray-400 hover:text-indigo-600 transition-colors"
+                              title="Edit Address"
+                            >
+                              <FaEdit />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteAddress(address._id)}
+                              className="text-gray-400 hover:text-red-600 transition-colors"
+                              title="Delete Address"
+                            >
+                              <FaTrash />
+                            </button>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2 text-gray-600 mb-4">
+                          <p className="font-medium">{address.address}</p>
+                          <p>{address.city}, {address.state} {address.pincode}</p>
+                          <p>{address.country}</p>
+                          <p className="font-medium">Phone: {address.phone}</p>
+                        </div>
+                        
+                        {!address.isDefault && (
+                          <button
+                            onClick={() => handleSetDefaultAddress(address._id)}
+                            className="w-full bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                          >
+                            Set as Default
+                          </button>
+                        )}
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </motion.div>
 
@@ -833,6 +1147,183 @@ export default function ProfilePage() {
                       )}
                     </div>
                   )}
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Address Form Modal */}
+        <AnimatePresence>
+          {showAddressForm && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+              onClick={() => setShowAddressForm(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900">
+                      {editingAddress ? 'Edit Address' : 'Add New Address'}
+                    </h2>
+                    <button
+                      onClick={() => setShowAddressForm(false)}
+                      className="text-gray-400 hover:text-gray-600 text-2xl"
+                    >
+                      <FaTimes />
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleSaveAddress} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Full Name *
+                        </label>
+                        <input
+                          type="text"
+                          name="name"
+                          value={addressForm.name}
+                          onChange={handleAddressChange}
+                          required
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                          placeholder="Enter full name"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Phone Number *
+                        </label>
+                        <input
+                          type="tel"
+                          name="phone"
+                          value={addressForm.phone}
+                          onChange={handleAddressChange}
+                          required
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                          placeholder="Enter phone number"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Address *
+                      </label>
+                      <textarea
+                        name="address"
+                        value={addressForm.address}
+                        onChange={handleAddressChange}
+                        required
+                        rows={3}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="Enter complete address"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          City *
+                        </label>
+                        <input
+                          type="text"
+                          name="city"
+                          value={addressForm.city}
+                          onChange={handleAddressChange}
+                          required
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                          placeholder="Enter city"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          State *
+                        </label>
+                        <input
+                          type="text"
+                          name="state"
+                          value={addressForm.state}
+                          onChange={handleAddressChange}
+                          required
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                          placeholder="Enter state"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Pincode *
+                        </label>
+                        <input
+                          type="text"
+                          name="pincode"
+                          value={addressForm.pincode}
+                          onChange={handleAddressChange}
+                          required
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                          placeholder="Enter pincode"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Country *
+                      </label>
+                      <input
+                        type="text"
+                        name="country"
+                        value={addressForm.country}
+                        onChange={handleAddressChange}
+                        required
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="Enter country"
+                      />
+                    </div>
+
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        name="isDefault"
+                        checked={addressForm.isDefault}
+                        onChange={handleAddressChange}
+                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                      />
+                      <label className="ml-2 block text-sm text-gray-700">
+                        Set as default address
+                      </label>
+                    </div>
+
+                    <div className="flex justify-end space-x-3 pt-4">
+                      <button
+                        type="button"
+                        onClick={() => setShowAddressForm(false)}
+                        className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                          loading
+                            ? 'bg-gray-400 text-white cursor-not-allowed'
+                            : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:opacity-90'
+                        }`}
+                      >
+                        {loading ? 'Saving...' : (editingAddress ? 'Update Address' : 'Save Address')}
+                      </button>
+                    </div>
+                  </form>
                 </div>
               </motion.div>
             </motion.div>
