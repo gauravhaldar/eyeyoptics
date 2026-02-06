@@ -1,3 +1,4 @@
+"use client";
 import { motion } from "framer-motion";
 import Link from "next/link";
 
@@ -45,7 +46,13 @@ export default function Footer() {
   ];
 
   return (
-    <footer className="bg-[#222222] text-gray-300 py-12 px-6 md:px-10">
+    <motion.footer
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.8 }}
+      viewport={{ once: true }}
+      className="bg-[#222222] text-gray-300 py-12 px-6 md:px-10"
+    >
       <div className="max-w-[95%] mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-8">
         {footerSections.map((section, index) => (
           <div key={index}>
@@ -79,6 +86,6 @@ export default function Footer() {
           © 2026 Haldar AI & IT. All rights reserved.
         </p>
       </div>
-    </footer>
+    </motion.footer>
   );
 }
