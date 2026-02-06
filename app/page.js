@@ -19,18 +19,18 @@ export default function Home() {
     <div>
       <BannerSlider />
       <IntroSection />
-      <PopularCategory />
+      {/* <PopularCategory /> */}
       {/* <Products1 /> */}
-      <FrequentlyBought />
+      {/* <FrequentlyBought /> */}
       <Categories />
       <BudgetBuys />
       <Products2 />
       <OffersSlider />
-      <NewArrivals />
+      {/* <NewArrivals /> */}
       {/* <Guides /> */}
       <Products4 />
-      <Banner />
       <Products5 />
+      <Banner />
       <Products />
       <Customers />
       <About />

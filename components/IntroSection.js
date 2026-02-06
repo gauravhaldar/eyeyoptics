@@ -23,7 +23,7 @@ export default function IntroSection() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="text-gray-600 text-lg mb-8 leading-relaxed"
+          className="text-black text-lg mb-8 leading-relaxed font-medium"
         >
           Enjoy stylish, affordable & precise eyeglasses tailored for every
           version of you. Shop with confidence with 14 days no questions asked
@@ -33,7 +33,7 @@ export default function IntroSection() {
 
         {/* Features Grid */}
         <motion.div
-          className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8"
+          className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-8"
           initial="hidden"
           animate="visible"
           variants={{

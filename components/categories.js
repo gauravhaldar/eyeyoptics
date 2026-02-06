@@ -8,57 +8,46 @@ import Link from "next/link";
 
 export default function Categories() {
   const categories = [
-    { name: "Eyeglasses", image: "/men.png", link: "/eyeglasses" },
-    { name: "Sunglasses", image: "/women.png", link: "/sunglasses" },
-    { name: "Power glasses", image: "/premium.png", link: "/power-glasses" },
-    { name: "Computer Glasses", image: "/collection.png", link: "/computer-glasses" },
+    { name: "Men's Styles", image: "/men.png", link: "/eyeglasses" },
+    { name: "Women's Styles", image: "/women.png", link: "/sunglasses" },
+    { name: "Premium Brands", image: "/premium.png", link: "/power-glasses" },
+    { name: "New Collection", image: "/collection.png", link: "/computer-glasses" },
     { name: "Hot Sellers", image: "/hot.png", link: "/hot-sellers" },
-    { name: "0 Glasses", image: "/0.png", link: "/computer-glasses" },
+    { name: "$ 0 Glasses", image: "/0.png", link: "/computer-glasses" },
     { name: "Contact Lenses", image: "/cl.png", link: "/contact-lenses" },
   ];
 
   return (
-    <section className="bg-[#e7f6f8] py-16 px-6 md:px-20">
-      {/* Heading */}
-      <h2 className="text-gray-800 text-3xl md:text-xl font-bold mb-2">
-        Find Your Perfect Pair
-      </h2>
-
-      {/* Subheading */}
-      <p className="text-gray-800 text-4xl md:text-3xl font-extrabold mb-10">
-        The Right Eyewear for Every Need
-      </p>
-
+    <section className="bg-white py-10 px-6 md:px-20">
       {/* --- Mobile Slider --- */}
       <div className="block md:hidden">
         <motion.div
-          className="flex gap-6 overflow-x-auto scrollbar-hide"
+          className="flex gap-10 overflow-x-auto scrollbar-hide px-2"
           drag="x"
-          dragConstraints={{ left: -500, right: 0 }}
+          dragConstraints={{ left: -700, right: 0 }}
         >
           {categories.map((category, index) => (
             <motion.div
               key={index}
-              className="min-w-[120px] text-center flex-shrink-0"
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: index * 0.1 }}
+              className="min-w-[140px] text-center flex-shrink-0"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4, delay: index * 0.05 }}
             >
               <Link href={category.link}>
-                <div>
-                  {/* Circle Image Container */}
-                  <div className="w-24 h-24 mx-auto rounded-full overflow-hidden mb-2 bg-white flex items-center justify-center shadow-sm">
+                <div className="flex flex-col items-center">
+                  {/* Simple Image Container (No circle/shadow) */}
+                  <div className="w-20 h-16 mb-2 flex items-center justify-center">
                     <Image
                       src={category.image}
                       alt={category.name}
                       width={100}
-                      height={100}
-                      className="object-contain transition-transform duration-300 ease-in-out hover:scale-110"
+                      height={60}
+                      className="object-contain transition-transform duration-300 hover:scale-105"
                     />
                   </div>
-
-                  {/* Name Below Circle */}
-                  <span className="text-gray-800 font-medium text-sm block mt-1">
+                  {/* Bold Name Below */}
+                  <span className="text-gray-900 font-bold text-sm uppercase tracking-tight">
                     {category.name}
                   </span>
                 </div>
@@ -68,31 +57,30 @@ export default function Categories() {
         </motion.div>
       </div>
 
-      {/* --- Desktop Grid --- */}
-      <div className="hidden md:grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-6">
+      {/* --- Desktop Row --- */}
+      <div className="hidden md:flex justify-between items-end max-w-[95%] mx-auto gap-10">
         {categories.map((category, index) => (
           <motion.div
             key={index}
-            initial={{ opacity: 0, y: 30, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: 0.5, delay: index * 0.1 }}
-            className="text-center cursor-pointer"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: index * 0.05 }}
+            className="text-center group cursor-pointer"
           >
             <Link href={category.link}>
-              <div>
-                {/* Circle Image Container */}
-                <div className="w-24 h-24 md:w-28 md:h-28 mx-auto rounded-full overflow-hidden mb-2 bg-white flex items-center justify-center shadow-sm">
+              <div className="flex flex-col items-center">
+                {/* Simple Image Container (No circle/shadow) */}
+                <div className="w-28 h-20 mb-4 flex items-center justify-center">
                   <Image
                     src={category.image}
                     alt={category.name}
-                    width={100}
-                    height={100}
-                    className="object-contain transition-transform duration-300 ease-in-out hover:scale-110"
+                    width={120}
+                    height={80}
+                    className="object-contain transition-transform duration-300 group-hover:scale-110"
                   />
                 </div>
-
-                {/* Name Below Circle */}
-                <span className="text-gray-800 font-medium text-sm md:text-base block mt-1">
+                {/* Bold Name Below */}
+                <span className="text-black font-extrabold text-[15px] tracking-tight whitespace-nowrap">
                   {category.name}
                 </span>
               </div>

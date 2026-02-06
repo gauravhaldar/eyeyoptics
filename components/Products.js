@@ -45,12 +45,12 @@ export default function Products() {
   return (
     <section className="my-12 px-6 md:px-20">
       {/* Heading */}
-      <h1 className="text-4xl font-semibold mb-4 text-center">
+      <h1 className="text-4xl font-bold mb-4 text-center text-black">
         Bestselling Eyeglasses Shapes
       </h1>
 
       {/* Paragraph */}
-      <p className="text-center text-lg max-w-xl mx-auto mb-12 text-gray-700">
+      <p className="text-center text-lg max-w-xl mx-auto mb-12 text-black font-bold">
         Set new trends around with these eyemazing Eyeglasses Shapes!
       </p>
 

@@ -20,20 +20,19 @@ export default function BannerSlider() {
   }, [slides.length]);
 
   return (
-    <div className="relative w-full h-[145px] sm:h-[300px] md:h-[400px] lg:h-[450px] overflow-hidden ">
+    <div className="relative w-full h-[90px] sm:h-[180px] md:h-[240px] lg:h-[280px] overflow-hidden mt-0">
       {slides.map((slide, index) => (
         <div
           key={slide.id}
-          className={`absolute inset-0 transition-opacity duration-1000 ease-in-out flex items-center justify-center ${
-            index === currentIndex ? "opacity-100 z-10" : "opacity-0 z-0"
-          }`}
+          className={`absolute inset-0 transition-opacity duration-1000 ease-in-out flex items-center justify-center ${index === currentIndex ? "opacity-100 z-10" : "opacity-0 z-0"
+            }`}
         >
           <Image
             src={slide.image}
             alt={`Slide ${index + 1}`}
             fill
             priority={index === 0}
-            className="object-contain object-center"
+            className="object-cover object-center"
           />
         </div>
       ))}
@@ -44,9 +43,8 @@ export default function BannerSlider() {
           <button
             key={index}
             onClick={() => setCurrentIndex(index)}
-            className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full transition-colors ${
-              index === currentIndex ? "bg-white" : "bg-gray-400"
-            }`}
+            className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full transition-colors ${index === currentIndex ? "bg-white" : "bg-gray-400"
+              }`}
           ></button>
         ))}
       </div>
