@@ -1,6 +1,8 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect } from "react";
+import { auth, googleProvider } from "../lib/firebase";
+import { signInWithPopup } from "firebase/auth";
 
 const AuthContext = createContext();
 
@@ -24,6 +26,40 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Google Login
+  const googleLogin = async () => {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const idToken = await result.user.getIdToken();
+
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/users/google-login`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ idToken }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setUser(data);
+        localStorage.setItem("user", JSON.stringify(data));
+        setHasLoggedOut(false);
+        localStorage.removeItem("hasLoggedOut");
+        localStorage.removeItem("logoutTime");
+        return { success: true };
+      } else {
+        throw new Error(data.message || "Google Login failed");
+      }
+    } catch (error) {
+      console.error("❌ Google Login Error:", error);
+      throw error;
+    }
+  };
+
   // Load user from localStorage on refresh
   useEffect(() => {
     const initializeAuth = async () => {
@@ -35,7 +71,7 @@ export const AuthProvider = ({ children }) => {
       if (logoutTime) {
         const timeSinceLogout = Date.now() - parseInt(logoutTime);
         const fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
-        
+
         if (timeSinceLogout > fiveMinutes) {
           console.log("🕒 Logout flag expired, clearing it");
           localStorage.removeItem('hasLoggedOut');
@@ -179,7 +215,7 @@ export const AuthProvider = ({ children }) => {
     setHasLoggedOut(true);
     localStorage.setItem('hasLoggedOut', 'true'); // Persist logout state
     localStorage.setItem('logoutTime', Date.now().toString()); // Store logout timestamp
-    
+
     try {
       // Try to logout from backend, but don't fail if it doesn't work
       await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/logout`, {
@@ -190,12 +226,12 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.log("⚠️ Backend logout failed, but continuing with local logout:", error);
     }
-    
+
     // Always clear local state regardless of backend response
     setUser(null);
     localStorage.removeItem("user");
     console.log("🚪 User logged out successfully");
-    
+
     // Reset the logging out flag after a short delay
     setTimeout(() => {
       setIsLoggingOut(false);
@@ -237,6 +273,7 @@ export const AuthProvider = ({ children }) => {
         user,
         login,
         signup,
+        googleLogin,
         logout,
         fetchCurrentUser,
         updateProfile,

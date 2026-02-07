@@ -200,13 +200,13 @@ export default function Navbar() {
             </div>
 
             <Link href="/computer-glasses" className="hover:text-gray-600 py-2">Computer Glasses</Link>
+            <Link href="/sunglasses" className="hover:text-gray-600 py-2">Sunglasses</Link>
+            <Link href="/power-glasses" className="hover:text-gray-600 py-2">Power Glasses</Link>
             <Link href="/contact-lenses" className="hover:text-gray-600 py-2">Contact Lenses</Link>
-            <Link href="/color-blind" className="hover:text-gray-600 py-2 whitespace-nowrap">Color Blind Glasses</Link>
-            <Link href="/more" className="hover:text-gray-600 py-2">More...</Link>
 
             {/* 3D Try On Button */}
-            <button className="bg-gradient-to-r from-[#59a4dc] to-[#30cbd1] text-white px-5 py-2 rounded-md flex items-center gap-2 font-bold text-sm shadow-sm hover:opacity-90 transition-opacity">
-              <span className="text-lg">👓</span>
+            <button className="bg-gradient-to-r from-[#59a4dc] to-[#30cbd1] text-white px-3 py-1.5 rounded-md flex items-center gap-1.5 font-bold text-[13px] shadow-sm hover:opacity-90 transition-opacity">
+              <span className="text-base">👓</span>
               3D Try On
             </button>
           </div>
@@ -234,6 +234,8 @@ export default function Navbar() {
             <div className="flex flex-col gap-3 py-2 border-b border-gray-50">
               <Link href="/eyeglasses" className="font-bold text-gray-800">Eyeglasses</Link>
               <Link href="/computer-glasses" className="font-bold text-gray-800">Computer Glasses</Link>
+              <Link href="/sunglasses" className="font-bold text-gray-800">Sunglasses</Link>
+              <Link href="/power-glasses" className="font-bold text-gray-800">Power Glasses</Link>
               <Link href="/contact-lenses" className="font-bold text-gray-800">Contact Lenses</Link>
             </div>
 
@@ -251,7 +253,7 @@ export default function Navbar() {
               <Link href="/help" className="text-gray-700">Help Center</Link>
             </div>
 
-            <button className="bg-gradient-to-r from-[#59a4dc] to-[#30cbd1] text-white px-4 py-2 rounded-md font-bold text-center mt-2">
+            <button className="bg-gradient-to-r from-[#59a4dc] to-[#30cbd1] text-white px-4 py-1.5 rounded-md font-bold text-sm text-center mt-2">
               3D Try On
             </button>
           </motion.div>
